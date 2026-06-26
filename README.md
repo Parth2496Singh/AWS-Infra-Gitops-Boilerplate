@@ -40,6 +40,8 @@ To make this frictionless, we have provided an automated bootstrap script.
 *   **Automated Image Rollouts:** The Argo CD Image Updater securely polls AWS ECR for new Docker tags and pushes Git commits back to this repository, ensuring the infrastructure documents its own release history.
 *   **Keyless CI/CD Security:** GitHub Actions utilizes AWS OIDC (OpenID Connect) to dynamically assume temporary roles, eliminating hardcoded access keys.
 *   **Native AWS ECR Authentication:** Implements a highly secure, Kubernetes-native CronJob architecture using IRSA (IAM Roles for Service Accounts) to rotate credentials seamlessly.
+*   **Day 2 Operations & Observability:** Integrated with **Prometheus & Grafana** for deep cluster metrics, health monitoring, and performance dashboards out-of-the-box.
+*   **Active Alerting & Notifications:** Configured with Argo CD SMTP bindings to instantly alert your engineering team (via Email/Slack) whenever a deployment succeeds, fails, or degrades.
 
 ## 📚 Documentation Directory
 
