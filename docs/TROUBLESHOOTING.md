@@ -17,6 +17,12 @@ This guide serves as the primary runbook for diagnosing and resolving common pla
     3. Re-run `terraform destroy`.
 *   **Preventative Measures:** Always purge Kubernetes ingress objects before attempting to destroy an EKS cluster.
 
+### Issue: Kubernetes Service stuck in `Terminating`
+*   **Symptoms:** Running `kubectl delete svc ingress-nginx-controller -n ingress-nginx` hangs indefinitely. Hitting `Ctrl+C` exits, but the service remains in a `Terminating` state.
+*   **Root Cause:** Kubernetes Services of type `LoadBalancer` have a "Finalizer" attached (`service.kubernetes.io/load-balancer-cleanup`). This tells Kubernetes not to delete the object until it successfully talks to the AWS API to delete the physical AWS Load Balancer. If AWS is unresponsive, or the physical Load Balancer was already deleted manually/via Terraform, Kubernetes waits forever.
+*   **Resolution:** You must manually patch the Kubernetes Service to strip the finalizer, forcing Kubernetes to let it go:
+    `kubectl patch svc ingress-nginx-controller -n ingress-nginx -p '{"metadata":{"finalizers":null}}'`
+
 ### Issue: Terraform State Lock Error
 *   **Symptoms:** `Error: Error acquiring the state lock`
 *   **Root Cause:** A previous CI/CD pipeline or local Terraform run crashed unexpectedly before releasing the DynamoDB lock.
@@ -37,6 +43,19 @@ This guide serves as the primary runbook for diagnosing and resolving common pla
 *   **Symptoms:** Argo CD fails to render the Application, citing a Go template nil pointer error related to annotations or notifications.
 *   **Root Cause:** Helm utilizes Go Templating (`{{ .Values }}`). Argo CD Notifications also utilize Go Templating (`{{ .app.metadata.name }}`). If you place an Argo CD variable directly into a Helm chart, Helm attempts to evaluate it locally, fails to find the variable, and crashes.
 *   **Resolution:** Wrap all Argo CD variables in Helm's literal escape sequence. E.g., change `{{.app.metadata.name}}` to `{{ "{{.app.metadata.name}}" }}`.
+
+### Issue: Helm Upgrade Fails with `invalid ownership metadata`
+*   **Symptoms:** Running `helm upgrade --install platform-control-plane` fails with: `ConfigMap "argocd-notifications-cm" in namespace "argocd" exists and cannot be imported into the current release: invalid ownership metadata`. Trying to use `--force` results in `cannot use server-side apply and force replace together`.
+*   **Root Cause:** A previous installation (either a raw `kubectl apply` from the Argo CD catalog or an aborted older Helm release) created resources in the `argocd` namespace. Helm sees those resources exist but aren't labeled as managed by this specific Helm release, so it defensively blocks the installation.
+*   **Resolution:** Purge the conflicting release entirely to give Helm a clean slate. Run:
+    1. `helm uninstall platform-control-plane -n argocd`
+    2. *Optional (if configmaps linger):* `kubectl delete cm argocd-notifications-cm -n argocd`
+    3. Re-run your `helm upgrade --install ...` command.
+
+### Issue: Secret `already exists` during Bootstrapping
+*   **Symptoms:** `error: failed to create secret secrets "argocd-notifications-secret" already exists`
+*   **Root Cause:** You are running the `kubectl create secret` command on a cluster where the secret was already created by a previous run or pipeline.
+*   **Resolution:** If you are just re-running setup commands and the password hasn't changed, you can safely ignore this. If you made a mistake and need to update the secret, you must delete it first: `kubectl delete secret argocd-notifications-secret -n argocd` before recreating it.
 
 ---
 

@@ -73,6 +73,10 @@ terraform apply -auto-approve
 
 ## 3. Kubernetes & GitOps Bootstrapping
 
+> **⚠️ Re-Deployment Warning:** If you are re-running these commands on an existing cluster, you may encounter `Already Exists` errors (for Secrets) or `invalid ownership metadata` errors (during the Helm install in step 3.4). To clear the slate before proceeding, run:
+> 1. `kubectl delete secret github-gitops-creds argocd-notifications-secret -n argocd --ignore-not-found`
+> 2. `helm uninstall platform-control-plane -n argocd --ignore-not-found`
+
 ### 3.1 Authenticate kubectl
 **Purpose:** Configures your local CLI to communicate with the new EKS cluster.
 **Command:**
