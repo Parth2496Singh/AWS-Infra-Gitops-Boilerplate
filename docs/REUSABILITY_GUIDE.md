@@ -17,6 +17,7 @@ When you first clone or fork this repository, you must immediately complete this
 - [ ] Complete the **AWS Account ID** rotation.
 - [ ] Complete the **Repository Name** rotation.
 - [ ] Generate fresh SSH keys (`terraform-eks-key`).
+- [ ] Uncomment the `push` and `pull_request` triggers in `.github/workflows/terraform-cicd.yaml` to activate your pipeline.
 
 ---
 
