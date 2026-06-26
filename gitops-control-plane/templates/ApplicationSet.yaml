@@ -1,0 +1,57 @@
+## Architecture
+# This ApplicationSet serves as the primary GitOps deployment engine.
+# It automatically discovers and deploys any microservice placed in the `apps/` directory.
+# Removing this stops all automatic application deployments.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: project-microservices
+  namespace: argocd
+spec:
+  generators:
+    - git:
+        repoURL: '{{ .Values.argocd.repoUrl }}'
+        revision: main
+        directories:
+          - path: apps/*
+  template:
+    metadata:
+      # FIX: Now uses the unified prefix from values.yaml, and correctly escapes Argo CD's path.basename
+      name: '{{ .Values.argocd.appPrefix }}-{{ "{{path.basename}}" }}'
+      annotations:
+        # FIX: Dynamically injects the receiver email
+        notifications.argoproj.io/subscribe.on-deployed.email: '{{ .Values.notifications.email.receiver }}'
+        notifications.argoproj.io/subscribe.on-health-degraded.email: '{{ .Values.notifications.email.receiver }}'
+    spec:
+      project: {{ .Values.argocd.projectName }}
+      
+      ## Maintainability
+      # We utilize a Helm multi-source pattern.
+      # The first source pulls the generic common-microservices blueprint.
+      # The second source injects the specific values.yaml from the discovered `apps/<name>` directory.
+      # This enforces DRY (Don't Repeat Yourself) infrastructure across all microservices.
+      sources:
+        - repoURL: '{{ .Values.argocd.repoUrl }}'
+          path: '{{ .Values.argocd.blueprintPath }}'
+          targetRevision: main
+          helm:
+            valueFiles:
+              - '$values/{{ "{{path}}" }}/values.yaml'
+        - repoURL: '{{ .Values.argocd.repoUrl }}'
+          targetRevision: main
+          ref: values
+      destination:
+        server: '{{ .Values.cluster.serverUrl }}'
+        # FIX: Now uses the environment variable dynamically
+        namespace: {{ .Values.environment }}
+      
+      ## Reliability
+      # Automated pruning removes resources from the cluster if they are deleted from Git.
+      # SelfHeal reverts any manual `kubectl edit` attempts back to the Git state.
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        # FIX: Tells Argo CD to automatically create the namespace (e.g. 'production') if it doesn't exist
+        syncOptions:
+          - CreateNamespace=true

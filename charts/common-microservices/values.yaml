@@ -1,0 +1,41 @@
+# charts/common-microservice/values.yaml
+# This is the GENERIC Helm Blueprint. 
+# Do NOT hardcode app-specific values here. These are the default fallbacks.
+# Override these values in your individual apps/<app-name>/values.yaml files.
+
+# The default number of Pod replicas to run if an app doesn't specify it.
+replicaCount: 1
+
+image:
+  # The default image repository to pull if not specified by the app.
+  repository: nginx
+  # The default image tag to deploy.
+  tag: latest
+  # Tells Kubernetes whether to pull the image from ECR (IfNotPresent or Always).
+  pullPolicy: IfNotPresent
+
+service:
+  # The default Kubernetes Service type. ClusterIP means it's only accessible internally.
+  type: ClusterIP
+  # The internal port the container is listening on (default 80).
+  port: 80
+
+ingress:
+  # Whether to expose this service to the public internet via an AWS Load Balancer.
+  enabled: false
+  # The Ingress Controller to use (AWS ALB is the standard here).
+  className: "alb"
+  # The specific domain name to route to this app. Leave empty for dynamic/wildcard routing.
+  host: ""
+  # The URL path that should route to this app.
+  path: "/"
+
+resources:
+  # The guaranteed amount of CPU/Memory reserved for the pod.
+  requests:
+    cpu: "50m"
+    memory: "64Mi"
+  # The absolute maximum CPU/Memory the pod is allowed to consume before being throttled/killed.
+  limits:
+    cpu: "200m"
+    memory: "256Mi"

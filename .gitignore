@@ -1,0 +1,28 @@
+vscode/
+
+# Environment files
+.env
+
+**/.terraform/*
+
+# .tfstate files (CRITICAL SECURITY)
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
+# Ignore private SSH keys
+*.pem
+*terraform-ec2-key*
+*terraform-eks-key*
+id_rsa*
+id_ed25519*
+
+# Ignore any secret variable files
+*.tfvars
+*.tfvars.json
+
+# Ignore temporary Kubernetes manifests or patches
+patch-*.yaml
+*secret*.yaml
+kubeconfig*

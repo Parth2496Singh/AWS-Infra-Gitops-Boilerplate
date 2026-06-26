@@ -1,0 +1,7 @@
+# gitops-control-plane/Chart.yaml
+apiVersion: v2
+name: gitops-control-plane
+description: The core App of Apps Bootstrap chart for <YOUR_PROJECT_NAME> Platform
+type: application
+version: 1.0.0
+appVersion: "1.0"

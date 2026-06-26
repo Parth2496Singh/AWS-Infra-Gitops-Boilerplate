@@ -1,0 +1,4 @@
+apiVersion: v2
+name: common-microservice
+description: A generic Helm chart for all <YOUR_PROJECT_NAME> stateless microservices
+version: 1.0.0

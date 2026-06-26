@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates an OIDC Provider for GitHub Actions and an IAM Role with permissions for Terraform.
+
+Parameters:
+  GitHubOrg:
+    Type: String
+    Description: Your GitHub Organization or Username
+  GitHubRepo:
+    Type: String
+    Description: Your GitHub Repository name
+  CreateOIDCProvider:
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: "Set to 'false' if the GitHub OIDC provider already exists in this AWS account."
+
+Conditions:
+  ShouldCreateOIDCProvider: !Equals [!Ref CreateOIDCProvider, 'true']
+
+Resources:
+  # The OIDC Provider establishes trust between AWS and GitHub
+  GitHubOIDCProvider:
+    Type: AWS::IAM::OIDCProvider
+    Condition: ShouldCreateOIDCProvider
+    Properties:
+      Url: "https://token.actions.githubusercontent.com"
+      ClientIdList:
+        - "sts.amazonaws.com"
+      ThumbprintList:
+        - "1b511abead59c6ce207077c0bf0e0043b1382612" # Required GitHub thumbprints
+        - "6938fd4d98bab03faadb97b34396831e3780aea1"
+
+  # The IAM Role that GitHub Actions will assume
+  GitHubActionsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: "GitHubActions-Terraform-Role"
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRoleWithWebIdentity
+            Principal:
+              # Dynamically build ARN so it works whether we create the provider or it already exists
+              Federated: !Sub "arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com"
+            Condition:
+              # Strict restriction: Only THIS repository can assume the role
+              StringLike:
+                token.actions.githubusercontent.com:sub: !Sub "repo:${GitHubOrg}/${GitHubRepo}:*"
+              StringEquals:
+                token.actions.githubusercontent.com:aud: "sts.amazonaws.com"
+      ManagedPolicyArns:
+        # Deterministic Policies required for Terraform execution
+        - "arn:aws:iam::aws:policy/AmazonEC2FullAccess"
+        - "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+        - "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+        - "arn:aws:iam::aws:policy/IAMFullAccess"
+        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+        - "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
+
+Outputs:
+  RoleArn:
+    Description: "The ARN of the IAM Role for GitHub Actions (Add this as AWS_ROLE_ARN in GitHub Secrets)"
+    Value: !GetAtt GitHubActionsRole.Arn

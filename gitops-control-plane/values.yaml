@@ -1,0 +1,52 @@
+# gitops-control-plane/values.yaml
+# Defines the global configuration for the Argo CD "App of Apps" GitOps Engine.
+# Do NOT modify the Helm templates directly. Change the values below.
+
+# The target deployment environment (e.g., 'production', 'staging', 'dev').
+environment: "production"
+
+cluster:
+  # The Kubernetes API Server URL where Argo CD will deploy the applications.
+  # For deploying to the same cluster Argo CD is running on, keep it as default.
+  serverUrl: "https://kubernetes.default.svc"
+
+argocd:
+  # The Argo CD Project name under which all microservices will be grouped.
+  projectName: "<YOUR_PROJECT_NAME>-platform"
+  # Unifies the naming scheme across ApplicationSet and ImageUpdater.
+  # Example: If appPrefix is "<YOUR_PROJECT_NAME>", your apps will be named "<YOUR_PROJECT_NAME>-backend".
+  appPrefix: "<YOUR_PROJECT_NAME>"
+  # The GitHub repository URL where your platform code and Helm charts are stored.
+  # Argo CD will continuously poll this repository for state changes.
+  repoUrl: "https://github.com/<YOUR_ORG>/<YOUR_REPO>.git"
+  # The relative path inside the repo where the generic Helm blueprint is located.
+  blueprintPath: "charts/common-microservices"
+  # The public-facing URL of your Argo CD dashboard. Used for email notification links.
+  # If you don't know this URL, see "Step 7: Accessing the Argo CD UI" in the README.md!
+  publicUrl: "https://argocd.yourdomain.com" 
+
+notifications:
+  email:
+    # The email address Argo CD will use to send deployment alerts.
+    sender: "<YOUR_EMAIL>@example.com"
+    # The email address that will receive the deployment alerts.
+    receiver: "<YOUR_EMAIL>@example.com"
+    # SMTP server configuration (Default is Gmail).
+    host: "smtp.gmail.com"
+    port: 465
+
+registry:
+  # The base URL of your AWS Elastic Container Registry (ECR).
+  ecrBaseUrl: "<YOUR_AWS_ACCOUNT_ID>.dkr.ecr.<YOUR_AWS_REGION>.amazonaws.com"
+  # The prefix used in ECR to group your Docker images.
+  repositoryPrefix: "<YOUR_PROJECT_NAME>"
+
+imageUpdater:
+  # The allowed SemVer strategy for automated image updates.
+  # "^1.0.0" means it will automatically deploy any 1.x.x version, but NOT 2.0.0.
+  defaultAllowedVersions: "semver:^1.0.0"
+  # List the exact names of the folders inside the 'apps/' directory that you want
+  # Argo CD Image Updater to actively monitor for new Docker tags.
+  managedApps:
+    - backend
+    - nginx

@@ -1,0 +1,87 @@
+## Architecture
+# This file circumvents the 12-hour expiration limit of AWS ECR authentication tokens.
+# Instead of storing static IAM keys, a CronJob assumes an OIDC-backed IAM role (IRSA),
+# requests a temporary token, and pushes it directly into the Argo CD namespace.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ecr-registry-secret
+  namespace: argocd
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: "e30=" # base64 encoded "{}"
+---
+## Security
+# This Role strictly limits the CronJob's K8s API access to modifying ONLY the `ecr-registry-secret`.
+# If the CronJob pod is compromised, the blast radius is confined to this single secret.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ecr-secret-updater
+  namespace: argocd
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  resourceNames: ["ecr-registry-secret"]
+  verbs: ["patch", "get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ecr-secret-updater-binding
+  namespace: argocd
+subjects:
+- kind: ServiceAccount
+  # Using the controller SA created by v1.2.2 install
+  name: argocd-image-updater-controller
+  namespace: argocd
+roleRef:
+  kind: Role
+  name: ecr-secret-updater
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ecr-token-refresh
+  namespace: argocd
+spec:
+  ## Reliability
+  # The schedule is set to 8 hours to safely beat the 12-hour ECR token expiration window.
+  # The history limits prevent the cluster from being flooded with old, completed Job pods.
+  schedule: "0 */8 * * *" # AWS ECR tokens expire after 12 hours
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          # Match the SA from above
+          serviceAccountName: argocd-image-updater-controller
+          restartPolicy: OnFailure
+          containers:
+          - name: aws-cli
+            image: amazon/aws-cli:latest
+            command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Fetching ECR token via IAM Role..."
+              TOKEN=$(aws ecr get-login-password --region us-east-1)
+              
+              # Generate Docker config JSON format for AWS ECR
+              AUTH=$(echo -n "AWS:$TOKEN" | base64 | tr -d '\n')
+              DOCKER_CONFIG="{\"auths\":{\"<YOUR_AWS_ACCOUNT_ID>.dkr.ecr.<YOUR_AWS_REGION>.amazonaws.com\":{\"username\":\"AWS\",\"password\":\"$TOKEN\",\"email\":\"none\",\"auth\":\"$AUTH\"}}}"
+              DOCKER_CONFIG_B64=$(echo -n "$DOCKER_CONFIG" | base64 | tr -d '\n')
+              
+              echo "Patching Kubernetes Secret using native K8s API..."
+              CACERT=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+              SA_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+              
+              curl -s --cacert $CACERT -H "Authorization: Bearer $SA_TOKEN" \
+                -H "Content-Type: application/strategic-merge-patch+json" \
+                -X PATCH \
+                -d "{\"data\": {\".dockerconfigjson\": \"$DOCKER_CONFIG_B64\"}}" \
+                https://kubernetes.default.svc/api/v1/namespaces/argocd/secrets/ecr-registry-secret
+              
+              echo "ECR token successfully updated!"

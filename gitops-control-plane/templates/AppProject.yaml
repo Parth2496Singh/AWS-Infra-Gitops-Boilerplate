@@ -1,0 +1,15 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: {{ .Values.argocd.projectName }}
+  namespace: argocd
+spec:
+  description: "Core project for {{ .Values.environment }} microservices"
+  sourceRepos:
+    - "{{ .Values.argocd.repoUrl }}"
+  destinations:
+    - namespace: {{ .Values.environment }}
+      server: "{{ .Values.cluster.serverUrl }}"
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace

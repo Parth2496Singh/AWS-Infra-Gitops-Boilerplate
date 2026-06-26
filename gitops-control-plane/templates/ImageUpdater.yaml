@@ -1,0 +1,19 @@
+## Architecture
+# This Custom Resource informs the Argo CD Image Updater which deployments to monitor.
+# When a new image tag appears in ECR, it triggers a physical git commit back to this repository,
+# ensuring the infrastructure physically self-updates while maintaining Git as the absolute source of truth.
+apiVersion: argocd-image-updater.argoproj.io/v1alpha1
+kind: ImageUpdater
+metadata:
+  name: platform-image-rules
+  namespace: argocd
+spec:
+  applicationRefs:
+    {{- range .Values.imageUpdater.managedApps }}
+    - namePattern: "{{ $.Values.argocd.appPrefix }}-{{ . }}"
+      writeBackConfig:
+        method: "git"
+      images:
+        - alias: "{{ . }}"
+          imageName: "{{ $.Values.registry.ecrBaseUrl }}/{{ $.Values.registry.repositoryPrefix }}/{{ . }}"
+    {{- end }}
