@@ -6,6 +6,95 @@ Welcome to the **Deep Dive Guide** for the Unified Platform.
 
 ---
 
+## 🗺️ Global Platform Architecture
+
+This boilerplate template provides a complete, end-to-end GitOps and Infrastructure-as-Code pipeline. The diagram below illustrates how a developer's code merges flow through GitHub Actions, update AWS ECR, and trigger Argo CD to orchestrate deployments across both EKS and EC2 environments.
+
+```mermaid
+flowchart TD
+    %% Define Styles
+    classDef aws fill:#FF9900,stroke:#232F3E,stroke-width:2px,color:#fff,font-weight:bold;
+    classDef k8s fill:#326CE5,stroke:#fff,stroke-width:2px,color:#fff,font-weight:bold;
+    classDef github fill:#24292e,stroke:#fff,stroke-width:2px,color:#fff,font-weight:bold;
+    classDef user fill:#00b140,stroke:#fff,stroke-width:2px,color:#fff,font-weight:bold;
+    classDef argo fill:#EF7B4D,stroke:#fff,stroke-width:2px,color:#fff,font-weight:bold;
+    classDef terraform fill:#7B42BC,stroke:#fff,stroke-width:2px,color:#fff,font-weight:bold;
+
+    %% Actors
+    Dev[("👨‍💻 Developer")]:::user
+    User[("🌐 End User")]:::user
+
+    %% GitHub Ecosystem
+    subgraph GitHub["GitHub (Source of Truth)"]
+        Repo["AWS GitOps Boilerplate Repo"]:::github
+        GH_Actions["GitHub Actions (CI/CD)"]:::github
+        OIDC_Provider{"AWS OIDC Trust"}:::github
+    end
+
+    %% AWS Infrastructure
+    subgraph AWS["AWS Cloud (us-east-1)"]
+        S3_Dyn["S3 & DynamoDB\n(Terraform Remote State)"]:::aws
+        ECR["Elastic Container Registry\n(ECR)"]:::aws
+        IAM["IAM Roles (IRSA)"]:::aws
+        
+        %% EKS Cluster
+        subgraph EKS["Amazon EKS (Kubernetes)"]
+            ALB["AWS Application Load Balancer"]:::aws
+            NGINX["NGINX Ingress Controller"]:::k8s
+            ArgoCD["Argo CD (GitOps Engine)"]:::argo
+            ImageUpdater["Argo CD Image Updater"]:::argo
+            CronJob["ECR Auth CronJob\n(Natively Rotates Tokens)"]:::k8s
+            
+            subgraph Apps["Microservices (apps/ folder)"]
+                App1["Example Service 1\n(values.yaml)"]:::k8s
+                App2["Example Service 2\n(values.yaml)"]:::k8s
+            end
+        end
+
+        %% Legacy / EC2
+        subgraph EC2_Env["Standalone EC2 (Legacy)"]
+            EC2_Instance["EC2 Instance\n(Docker Compose)"]:::aws
+            IAM_Profile["EC2 IAM Instance Profile"]:::aws
+        end
+    end
+
+    %% Workflow Connections
+    %% Developer Flow
+    Dev -- "1. Pushes Terraform / GitOps Configs" --> Repo
+    Repo -- "2. Triggers Workflow" --> GH_Actions
+    GH_Actions -- "3. Requests Temp Token" --> OIDC_Provider
+    OIDC_Provider -- "4. Grants STS Role" --> IAM
+
+    %% Terraform Provisioning
+    GH_Actions -- "5. Runs terraform apply" --> S3_Dyn
+    S3_Dyn -. "Provisions / Modifies" .-> EKS
+    S3_Dyn -. "Provisions / Modifies" .-> EC2_Env
+
+    %% Application Code / Docker Flow (Assumes App Repo exists)
+    Dev -- "Code Push (Microservice Repo)" --> GH_Actions
+    GH_Actions -- "Build & Push Image" --> ECR
+
+    %% GitOps Continuous Deployment (EKS)
+    ImageUpdater -- "Polls for New Tags" --> ECR
+    CronJob -- "Assumes IRSA to fetch ECR Password" --> IAM
+    CronJob -- "Injects Token" --> ImageUpdater
+    ImageUpdater -- "Writes new Tag Commit back to" --> Repo
+    
+    ArgoCD -- "Monitors apps/ for Helm Changes" --> Repo
+    ArgoCD -- "Applies Manifests" --> Apps
+
+    %% EC2 Standalone flow
+    IAM_Profile -- "Securely accesses" --> ECR
+    EC2_Instance -- "Pulls Image via UserData" --> ECR
+
+    %% User Traffic
+    User -- "HTTPS Traffic" --> ALB
+    ALB -- "Routes to NodePort" --> NGINX
+    NGINX -- "Internal Routing" --> Apps
+```
+
+---
+
 ## 1. Infrastructure as Code (Terraform)
 
 The foundation of the platform is built using HashiCorp Terraform, strictly separated into functional modules (`terraform-eks` and `terraform-ec2`) to limit blast radiuses and separate modern orchestration from legacy standalone deployments.
