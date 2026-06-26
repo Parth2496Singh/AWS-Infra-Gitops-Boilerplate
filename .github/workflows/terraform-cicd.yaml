@@ -1,16 +1,23 @@
 name: 'Terraform Infrastructure CI/CD'
 
+# =========================================================================================
+# ⚠️ BOILERPLATE INSTRUCTION:
+# The push and pull_request triggers have been commented out to prevent GitHub Actions
+# from automatically executing when you first fork/clone this template.
+# Once you have updated your variables and bootstrapped the repo, UNCOMMENT the lines below.
+# =========================================================================================
 on:
-  push:
-    branches: [ "main" ]
-    paths: 
-      - "terraform-eks/**"
-      - "terraform-ec2/**"
-  pull_request:
-    branches: [ "main" ]
-    paths: 
-      - "terraform-eks/**"
-      - "terraform-ec2/**"
+  workflow_dispatch: # Allows manual triggering for now
+#   push:
+#     branches: [ "main" ]
+#     paths: 
+#       - "terraform-eks/**"
+#       - "terraform-ec2/**"
+#   pull_request:
+#     branches: [ "main" ]
+#     paths: 
+#       - "terraform-eks/**"
+#       - "terraform-ec2/**"
 
 # Required permissions for AWS OIDC authentication (No hardcoded AWS Keys!)
 permissions:
