@@ -35,13 +35,32 @@ To make this frictionless, we have provided an automated bootstrap script.
 > **Important Note:** You must also manually replace `my-project-terraform-state-bucket`, `my-project-terraform-lock-table`, and `my-eks-cluster` with your own unique names inside the Terraform files to avoid AWS state collisions. See the **[Reusability Guide](docs/REUSABILITY_GUIDE.md)** for the full checklist!
 
 ## ✨ Key Features
-*   **Declarative Infrastructure:** Physical AWS compute and networking layers (EKS, VPCs, IAM) are strictly managed via Terraform.
-*   **GitOps Automation:** Argo CD ApplicationSets dynamically discover and deploy new microservices without manual intervention.
+
+This boilerplate is not just a collection of scripts; it is a fully integrated, production-ready DevOps ecosystem.
+
+### 🏗️ Infrastructure as Code (Terraform)
+*   **Declarative Environments:** Physical AWS compute, networking (VPCs, Subnets, Gateways), and IAM roles are strictly managed via Terraform.
+*   **Dual Compute Support:** Built-in modules for both modern Kubernetes orchestration (`terraform-eks`) and legacy/standalone instances (`terraform-ec2`).
+*   **Remote State & Locking:** Prevents infrastructure corruption with S3 backend storage and DynamoDB state locking.
+
+### 🔄 GitOps & Continuous Deployment (Argo CD)
+*   **App-of-Apps Architecture:** The entire cluster state is defined by a single root Helm chart (`gitops-control-plane`), making disaster recovery instant.
+*   **Dynamic ApplicationSets:** Argo CD automatically discovers new microservices placed in the `apps/` directory and deploys them using a DRY Helm blueprint without manual intervention.
 *   **Automated Image Rollouts:** The Argo CD Image Updater securely polls AWS ECR for new Docker tags and pushes Git commits back to this repository, ensuring the infrastructure documents its own release history.
-*   **Keyless CI/CD Security:** GitHub Actions utilizes AWS OIDC (OpenID Connect) to dynamically assume temporary roles, eliminating hardcoded access keys.
-*   **Native AWS ECR Authentication:** Implements a highly secure, Kubernetes-native CronJob architecture using IRSA (IAM Roles for Service Accounts) to rotate credentials seamlessly.
-*   **Day 2 Operations & Observability:** Integrated with **Prometheus & Grafana** for deep cluster metrics, health monitoring, and performance dashboards out-of-the-box.
-*   **Active Alerting & Notifications:** Configured with Argo CD SMTP bindings to instantly alert your engineering team (via Email/Slack) whenever a deployment succeeds, fails, or degrades.
+
+### 🔒 Zero-Trust Security & Identity
+*   **Keyless CI/CD (OIDC):** GitHub Actions utilizes AWS OIDC (OpenID Connect) to dynamically assume temporary roles. No hardcoded AWS Access Keys are used in the CI/CD pipeline.
+*   **Native AWS ECR Authentication (IRSA):** Implements a highly secure, Kubernetes-native CronJob architecture using IAM Roles for Service Accounts (IRSA) to seamlessly rotate ECR credentials every 8 hours.
+*   **Least Privilege IAM:** Strict IAM boundaries isolate the EKS cluster's permissions from the EC2 legacy environments.
+
+### 📊 Day-2 Operations & Observability
+*   **Prometheus & Grafana:** Pre-configured monitoring stack for deep cluster metrics, health checks, and performance dashboards out-of-the-box.
+*   **Active Alerting (SMTP):** Configured with Argo CD SMTP bindings to instantly alert your engineering team (via Email or Slack) whenever a deployment succeeds, fails, or degrades.
+*   **AWS Load Balancer Controller:** Seamless Layer 4 (NLB) and Layer 7 (ALB) traffic routing natively integrated with Kubernetes Ingress.
+
+### 🧩 Developer Experience (DX) & Automation
+*   **1-Click Bootstrapping:** Includes a custom bash script (`bootstrap-template.sh`) to instantly inject your personal AWS IDs, Project Names, and GitHub URLs across the entire codebase.
+*   **CI/CD Validation:** GitHub Actions automatically runs `terraform plan` on Pull Requests and comments the execution plan directly onto the PR for review.
 
 ## 📚 Documentation Directory
 
