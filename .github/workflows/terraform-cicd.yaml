@@ -7,7 +7,7 @@ name: 'Terraform Infrastructure CI/CD'
 # Once you have updated your variables and bootstrapped the repo, UNCOMMENT the lines below.
 # =========================================================================================
 on:
-  workflow_dispatch: # Allows manual triggering for now
+  workflow_dispatch: # Allows manual triggering for now. REMOVE THIS LINE ONCE YOU HAVE UPDATED YOUR VARIABLES AND BOOTSTRAPPED THE REPO
 #   push:
 #     branches: [ "main" ]
 #     paths: 
