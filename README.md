@@ -115,6 +115,14 @@ To make this frictionless, we have provided an automated bootstrap script.
 
 > **Important Note:** You must also manually replace `my-project-terraform-state-bucket`, `my-project-terraform-lock-table`, and `my-eks-cluster` with your own unique names inside the Terraform files to avoid AWS state collisions. See the **[Reusability Guide](docs/REUSABILITY_GUIDE.md)** for the full checklist!
 
+## 🗺️ Future Roadmap
+
+While the current platform fully automates infrastructure and application delivery, I am actively planning the following enterprise upgrades:
+
+*   **Automated Secret Management:** Integrating **External Secrets Operator (ESO)** with AWS Secrets Manager. This will eliminate the need to manually create Kubernetes Secrets for database connection strings and API keys, pulling them dynamically via IRSA.
+*   **Service Mesh Integration:** Evaluating Istio or Linkerd to handle mutual TLS (mTLS) and advanced traffic routing between microservices.
+*   **EKS Auto Mode Migration:** Transitioning to EKS Auto Mode for true serverless compute management. This will completely abstract away node group provisioning, auto-scaling, and OS patching, further simplifying the Terraform footprint while drastically optimizing AWS compute costs.
+
 ---
 <div align="center">
   <b>Maintained by Parth Singh Kushwaha</b>
