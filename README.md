@@ -1,4 +1,4 @@
-# 🌌 AWS EKS GitOps Boilerplate
+# 🌌 AWS Infra GitOps Boilerplate
 
 <p>
   <img src="https://img.shields.io/badge/Terraform-7B42BC?style=for-the-badge&logo=terraform&logoColor=white" alt="Terraform" />
