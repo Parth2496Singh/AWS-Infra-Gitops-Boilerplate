@@ -75,6 +75,7 @@ By utilizing Terraform and Argo CD automation, this project achieves a **90%+ re
 *   **Day One Bootstrapping:** The entire platform goes from zero to fully operational in **~18 to 22 minutes** (which is entirely passive waiting on the AWS API to provision nodes).
 *   **Zero-Effort Replication:** Over the lifecycle of the project, spinning up an identical "Staging" or "Disaster Recovery" environment requires **0 minutes of engineering effort** and simply 18 minutes of automated cloud provisioning.
 *   **Instant Microservice Onboarding:** Adding a new microservice is as simple as copying the `apps/example-microservice/` folder, changing the image name in `values.yaml`, and pushing to Git. Argo CD handles the rest instantly. 
+*   **Automated Teardown:** Completely destroying the entire AWS architecture, including all VPCs, Load Balancers, and EKS nodes takes only **10-15 minutes** natively via Terraform, leaving zero orphaned resources.
 *   **Error Elimination:** Manual deployments introduce massive risk. A single mistyped subnet tag (`kubernetes.io/role/elb=1`), a missing security group rule, or a misconfigured OIDC trust policy can result in days of debugging. Terraform enforces immutable, error-free infrastructure every single run.
 
 ## 📚 Documentation Directory

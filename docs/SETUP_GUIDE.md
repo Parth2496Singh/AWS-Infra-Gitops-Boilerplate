@@ -115,9 +115,10 @@ kubectl create secret generic argocd-notifications-secret -n argocd \
 **Common Mistake:** Forgetting to apply the `argocd.argoproj.io/secret-type=repository` label will cause Argo CD to silently ignore the GitHub credentials.
 
 ### 3.4 Deploy the GitOps Control Plane
-**Purpose:** Installs Argo CD, ApplicationSets, and the global platform configuration using Helm.
+**Purpose:** Installs Argo CD, ApplicationSets, and the global platform configuration using Helm. We also proactively delete the default `argocd-notifications-cm` created in step 3.2 to prevent Helm from violently rejecting the installation due to ownership metadata conflicts.
 **Command:**
 ```bash
+kubectl delete configmap argocd-notifications-cm -n argocd --ignore-not-found
 helm upgrade --install platform-control-plane ./gitops-control-plane -n argocd --create-namespace --wait
 ```
 **Verification:** Run `kubectl get pods -n argocd -w`. Wait until all pods report `Running`.
@@ -153,14 +154,41 @@ kubectl rollout restart deployment argocd-image-updater-controller -n argocd
 
 ## 5. Teardown & Cleanup
 
-**Purpose:** Deleting an EKS cluster running Kubernetes LoadBalancers requires manual intervention to prevent Terraform from crashing.
+> **CRITICAL - AVOID VPC DEPENDENCY ERRORS:** The AWS Load Balancer Controller dynamically creates physical AWS Application Load Balancers (ALBs) and Security Groups. Because Terraform did not create them, Terraform cannot delete them. If you run `terraform destroy` while these exist, AWS will block the VPC deletion, requiring painful manual cleanup.
 
-> **CRITICAL:** The AWS Load Balancer Controller created physical AWS resources (ALBs, ENIs) that Terraform does not know about. You must delete the Kubernetes ingress objects before running `terraform destroy`.
+Follow this exact sequence to safely destroy the cluster:
 
-**Workflow:**
-1. `kubectl delete ingress --all -A`
-2. `kubectl delete svc --all -A`
-3. Wait exactly 2 minutes for AWS to detach the physical ENIs from the Subnets.
-4. `cd terraform-eks/ && terraform destroy -auto-approve`
+### Phase 1: Graceful Kubernetes Cleanup
+```bash
+kubectl delete ingress --all -A
+kubectl delete svc ingress-nginx-controller -n ingress-nginx --ignore-not-found
+```
+*Wait exactly 2 to 3 minutes for the AWS Load Balancer Controller to physically detach the Elastic Network Interfaces (ENIs) from your Subnets.*
 
-If Terraform fails with a `DependencyViolation` indicating the VPC has mapped public addresses, you did not wait long enough, or you missed a LoadBalancer. (See [Troubleshooting Guide](TROUBLESHOOTING.md)).
+### Phase 2: Manual AWS Verification (Mandatory)
+Before running Terraform, verify that no orphaned resources remain in your VPC to block deletion.
+
+1. **Get your VPC ID** (e.g. from AWS Console or terraform output).
+2. **Check for orphaned Load Balancers:**
+   ```bash
+   aws elbv2 describe-load-balancers --region us-east-1 --query 'LoadBalancers[*].[LoadBalancerName,LoadBalancerArn,VpcId]'
+   ```
+   *If any ALBs appear here, delete them:*
+   ```bash
+   aws elbv2 delete-load-balancer --load-balancer-arn <ARN> --region us-east-1
+   ```
+3. **Check for orphaned Kubernetes Security Groups:**
+   ```bash
+   aws ec2 describe-security-groups --filters Name=vpc-id,Values=<YOUR_VPC_ID> --region us-east-1 --query 'SecurityGroups[*].[GroupId,GroupName]'
+   ```
+   *If you see any groups prefixed with `k8s-` (ignore the default group), delete them:*
+   ```bash
+   aws ec2 delete-security-group --group-id <SG_ID> --region us-east-1
+   ```
+
+### Phase 3: Terraform Destroy
+Once you have verified the AWS resources are gone, you are safe to destroy the infrastructure. (This typically takes **10-15 minutes**).
+```bash
+cd terraform-eks/
+terraform destroy -auto-approve
+```
