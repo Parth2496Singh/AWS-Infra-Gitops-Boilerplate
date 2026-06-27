@@ -2,17 +2,35 @@
 
 <p>
   <img src="https://img.shields.io/badge/Terraform-7B42BC?style=for-the-badge&logo=terraform&logoColor=white" alt="Terraform" />
-  <img src="https://img.shields.io/badge/AWS-232F3E?style=for-the-badge&logo=amazonaws&logoColor=white" alt="AWS" />
+  <img src="https://img.shields.io/badge/Amazon_EKS-232F3E?style=for-the-badge&logo=amazonaws&logoColor=white" alt="Amazon EKS" />
+  <img src="https://img.shields.io/badge/Amazon_EC2-FF9900?style=for-the-badge&logo=amazonaws&logoColor=white" alt="Amazon EC2" />
+  <img src="https://img.shields.io/badge/Amazon_S3-569A31?style=for-the-badge&logo=amazonaws&logoColor=white" alt="Amazon S3" />
+  <img src="https://img.shields.io/badge/DynamoDB-4053D6?style=for-the-badge&logo=amazonaws&logoColor=white" alt="DynamoDB" />
   <img src="https://img.shields.io/badge/Kubernetes-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white" alt="Kubernetes" />
   <img src="https://img.shields.io/badge/Helm-0F1689?style=for-the-badge&logo=helm&logoColor=white" alt="Helm" />
   <img src="https://img.shields.io/badge/Argo%20CD-EF7B4D?style=for-the-badge&logo=argo&logoColor=white" alt="Argo CD" />
   <img src="https://img.shields.io/badge/GitHub_Actions-2088FF?style=for-the-badge&logo=github-actions&logoColor=white" alt="GitHub Actions" />
+  <img src="https://img.shields.io/badge/Prometheus-E6522C?style=for-the-badge&logo=prometheus&logoColor=white" alt="Prometheus" />
+  <img src="https://img.shields.io/badge/Grafana-F46800?style=for-the-badge&logo=grafana&logoColor=white" alt="Grafana" />
 </p>
 
 ## 📖 Project Overview & Vision
 This repository is an **open-source, globally reusable GitOps and Infrastructure-as-Code (IaC) boilerplate template**. It is designed to act as a launchpad for DevOps and Platform Engineers who want to bootstrap a production-grade AWS EKS environment with a fully automated, keyless CI/CD pipeline and an Argo CD GitOps engine.
 
 Initially built to solve the operational friction of managing distributed microservices, this repository centralizes infrastructure definition (Terraform) and Kubernetes orchestration into a single, highly governed monorepo. It serves as both a demonstration of advanced Zero-Trust DevOps practices and a plug-and-play template for modern cloud-native deployments.
+
+## 🛠️ Technology Stack & Justification
+
+Every tool in this boilerplate was carefully selected to fulfill a specific, enterprise-grade requirement:
+
+*   **Amazon EKS (Elastic Kubernetes Service):** Provides a highly available, managed Kubernetes control plane. Chosen over self-hosted Kubernetes to reduce operational overhead while maintaining deep AWS integration.
+*   **Amazon EC2 (Elastic Compute Cloud):** Retained alongside EKS to support legacy applications, databases, or stateful workloads that have not yet been containerized or require raw compute access.
+*   **HashiCorp Terraform:** The industry standard for Infrastructure-as-Code. Used to declaratively define the AWS network and compute layers, ensuring the infrastructure is reproducible and immutable.
+*   **Amazon S3 & DynamoDB:** Used together to provide highly available remote state storage for Terraform. S3 securely stores the `.tfstate` files, while DynamoDB provides state locking to prevent concurrent CI/CD pipelines from corrupting the infrastructure.
+*   **GitHub Actions:** Chosen for continuous integration due to its native OIDC integration with AWS. This allows pipelines to securely authenticate with AWS dynamically, eliminating the need for hardcoded, long-lived access keys.
+*   **Argo CD:** The core GitOps deployment engine. Selected because it automatically pulls configurations from Git (rather than pushing to the cluster), ensuring the Git repository is the absolute single source of truth for the live cluster state.
+*   **Helm:** Used as the Kubernetes package manager. Helm's templating engine allows us to create a DRY (Don't Repeat Yourself) blueprint for microservices, reducing 500+ lines of raw Kubernetes YAML into a simple 20-line `values.yaml` file per app.
+*   **Prometheus & Grafana:** The industry standard for cloud-native observability. Prometheus scrapes deep metrics from the EKS nodes and pods, while Grafana visualizes this data into actionable health and performance dashboards.
 
 ## ✨ Key Features
 
