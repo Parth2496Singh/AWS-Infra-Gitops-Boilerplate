@@ -19,6 +19,14 @@ This repository is an **open-source, globally reusable GitOps and Infrastructure
 
 Initially built to solve the operational friction of managing distributed microservices, this repository centralizes infrastructure definition (Terraform) and Kubernetes orchestration into a single, highly governed monorepo. It serves as both a demonstration of advanced Zero-Trust DevOps practices and a plug-and-play template for modern cloud-native deployments.
 
+## 🗺️ Visual Architecture
+
+### 1. Global Platform Workflow (EKS + GitOps)
+![EKS GitOps Architecture](diagrams/GITOPS-ARCHTECTURE-ENHANCED.png)
+
+### 2. Legacy Workload Support (EC2)
+![EC2 Legacy Architecture](diagrams/GITOPS_EC2.png)
+
 ## 🛠️ Technology Stack & Justification
 
 Every tool in this boilerplate was carefully selected to fulfill a specific, enterprise-grade requirement:
