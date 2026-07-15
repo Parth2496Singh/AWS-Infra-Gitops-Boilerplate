@@ -5,7 +5,7 @@ metadata:
   name: {{ .Release.Name }}
   labels:
     app: {{ .Release.Name }}
-    release: prometheus # Required for kube-prometheus-stack to discover it
+    release: kube-prometheus-stack # Required for the Terraform EKS Addon to discover it
 spec:
   selector:
     matchLabels:
