@@ -16,6 +16,10 @@ export GITHUB_ORG="my-org" #Github Username
 export GITHUB_REPO="my-repo" #Repo Name
 export EMAIL="admin@example.com"
 export MY_NAME="Jane Doe"
+# --- TERRAFORM SPECIFIC ---
+export TF_STATE_BUCKET="my-unique-company-tf-state-bucket-123"
+export TF_LOCK_TABLE="my-unique-company-tf-lock-table"
+export CLUSTER_NAME="my-production-eks"
 # -----------------------------
 
 echo "🚀 Bootstrapping Template with your variables..."
@@ -47,5 +51,9 @@ bulk_replace "<YOUR_REPO>" "$GITHUB_REPO"
 bulk_replace "<YOUR_EMAIL>" "$EMAIL"
 bulk_replace "<YOUR_NAME>" "$MY_NAME"
 
-echo "✅ Variables injected successfully!"
-echo "⚠️  Next Steps: Ensure you manually rename the Terraform state buckets in 'remote-backend/main.tf' and 'terraform.tf' files if you haven't already."
+# Replace Terraform state and cluster hardcoded values
+bulk_replace "my-project-terraform-state-bucket" "$TF_STATE_BUCKET"
+bulk_replace "my-project-terraform-lock-table" "$TF_LOCK_TABLE"
+bulk_replace "my-eks-cluster" "$CLUSTER_NAME"
+
+echo "✅ Variables injected successfully! All GitHub, AWS, and Terraform configurations are now customized for your environment."

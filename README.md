@@ -88,13 +88,13 @@ By utilizing Terraform and Argo CD automation, this project achieves a **90%+ re
 
 ## 📚 Documentation Directory
 
-To make this repository easy to navigate and reuse, the documentation has been distributed into focused manuals:
+To avoid confusion, the documentation is strictly divided by role and phase. **Read the Setup Guide first.**
 
-*   🚀 **[Setup Guide](docs/SETUP_GUIDE.md):** The comprehensive, step-by-step manual for provisioning the AWS infrastructure and bootstrapping the GitOps engine from scratch.
-*   💻 **[Developer Guide](docs/DEVELOPER_GUIDE.md):** A manual for application teams on how to onboard new microservices and configure the advanced Universal Helm template.
-*   🧠 **[Architecture Deep Dive](docs/ARCHITECTURE.md):** An in-depth exploration of the system design, including OIDC trust policies, ApplicationSet configurations, and networking boundaries.
-*   🧬 **[Reusability Guide (Forking)](docs/REUSABILITY_GUIDE.md):** A checklist of exactly which hardcoded values (AWS IDs, S3 buckets) must be changed if you intend to clone this template for a new project.
-*   🛠️ **[Troubleshooting Runbook](docs/TROUBLESHOOTING.md):** Operational guides for resolving common platform failures (e.g., Terraform deadlocks, Argo CD OutOfSync errors).
+*   🚀 **[Setup Guide (Start Here)](docs/SETUP_GUIDE.md):** The sequential, step-by-step manual for provisioning the AWS infrastructure and bootstrapping the GitOps engine from scratch.
+*   💻 **[Developer Guide](docs/DEVELOPER_GUIDE.md):** For **Application Teams**. Explains how to onboard microservices, inject `.env` files, and use the advanced Universal Helm template.
+*   🧬 **[Reusability Guide](docs/REUSABILITY_GUIDE.md):** For **Platform Architects**. Explains exactly what the `bootstrap-template.sh` script modifies under the hood, how to customize the GitOps Control Plane, and how to clone this boilerplate for multiple environments (e.g. Staging vs Prod).
+*   🧠 **[Architecture Deep Dive](docs/ARCHITECTURE.md):** For **Security & Network Engineers**. An in-depth exploration of the Zero-Trust system design, including OIDC trust policies and networking boundaries.
+*   🛠️ **[Troubleshooting Runbook](docs/TROUBLESHOOTING.md):** For **Site Reliability Engineers (SREs)**. Operational guides for resolving common platform failures (e.g., Terraform deadlocks, Argo CD OutOfSync errors).
 
 ## 🛠️ How to Use This Template
 

@@ -2,86 +2,49 @@
 
 This repository is designed as a reusable GitOps boilerplate template. If you are forking this repository to use as the foundation for an entirely new project, organization, or environment, you **must** update the placeholder variables to ensure architectural isolation.
 
-> **💡 Pro Tip:** We have provided a 1-click Bash script in the **[README](../README.md#%EF%B8%8F-how-to-use-this-template)** to automatically replace all `<YOUR_...>` placeholders. If you use that script, you only need to manually rename the S3 buckets and Cluster names!
-
 Failing to update these values will result in state collisions, permission denials, or your GitOps engine attempting to pull from the original repository.
 
 ---
 
-## 1. Forking Checklist
+## 1. The Automated Bootstrap Script
 
-When you first clone or fork this repository, you must immediately complete this checklist before running `terraform init`.
+To make platform creation frictionless, we use `bootstrap-template.sh` to hydrate the repository with your specific AWS and GitHub credentials.
 
-- [ ] Delete all `.terraform/` directories and `.terraform.lock.hcl` files locally.
-- [ ] Complete the **Terraform State Backend** rename.
-- [ ] Complete the **AWS Account ID** rotation.
-- [ ] Complete the **Repository Name** rotation.
-- [ ] Generate fresh SSH keys (`terraform-eks-key`).
+**What this script modifies under the hood:**
+1. **GitHub Org/Repo:** Scans `gitops-control-plane/values.yaml` and `.github/workflows` to ensure Argo CD and GitHub Actions point to your new fork, not the original template.
+2. **AWS Account ID & Region:** Updates IAM OIDC trust policies and ECR image registry paths across Terraform and Helm.
+3. **Terraform State Isolation:** Generates globally unique names for your `terraform-eks` and `terraform-ec2` remote backend S3 buckets and DynamoDB lock tables to prevent state corruption.
+4. **EKS Cluster Naming:** Injects your custom cluster name into `locals.tf` to avoid VPC/EKS name collisions if deploying multiple clusters in the same AWS account.
+
+**Mandatory Post-Script Checklist:**
+Even after running the script, you must manually complete these steps:
+- [ ] Delete all `.terraform/` directories and `.terraform.lock.hcl` files locally if you have previously run `terraform init`.
+- [ ] Generate fresh SSH keys (`terraform-eks-key`) in the AWS console.
 - [ ] Uncomment the `push` and `pull_request` triggers in `.github/workflows/terraform-cicd.yaml` to activate your pipeline.
 
 ---
 
-## 2. Hardcoded Values Rotation Guide
+## 2. Managing Multiple Environments (Staging vs Prod)
 
-### 2.1 Changing the Terraform Backend
-Terraform state is stored in S3. S3 bucket names must be globally unique across all of AWS. You cannot use the buckets defined in this repository.
+If you are deploying multiple copies of this platform into the same AWS account (e.g., `staging` and `production`), you cannot use a single repository branch without careful isolation.
 
-*   **Search for these values:** 
-    *   `my-project-terraform-state-bucket` (or similar bucket names)
-    *   `my-project-terraform-lock-table`
-*   **Where to change it:** 
-    *   `terraform-eks/remote-backend/s3.tf` and `dynamodb.tf`
-    *   `terraform-ec2/remote-backend/s3.tf` and `dynamodb.tf`
-    *   `terraform-eks/terraform.tf` (in the `backend "s3"` block)
+### Option A: The Branch Strategy (Simpler)
+1. Keep your repository structure.
+2. Create a `staging` branch and a `production` branch.
+3. Run `bootstrap-template.sh` on the `staging` branch, setting `CLUSTER_NAME="staging-eks"` and unique S3 buckets.
+4. Run `bootstrap-template.sh` on the `production` branch, setting `CLUSTER_NAME="prod-eks"` and unique S3 buckets.
+5. Point your Argo CD ApplicationSet to track the specific branch for that environment.
 
-### 2.2 Changing AWS Account IDs
-Many AWS IAM policies and ECR repository URLs require the explicit 12-digit AWS Account ID.
-
-*   **Search for these values:** `<YOUR_AWS_ACCOUNT_ID>`
-*   **Where to change it:**
-    *   `terraform-eks/addons.tf` (If referencing OIDC ARNs directly)
-    *   `gitops-control-plane/values.yaml` (Under `registry.ecrBaseUrl`)
-    *   `apps/*/values.yaml` (Under the `image:` paths)
-
-### 2.3 Changing Repository Names & URLs
-The GitOps engine (Argo CD) needs to know exactly which Git repository to poll for changes.
-
-*   **Search for these values:** 
-    *   `<YOUR_ORG>/<YOUR_REPO>`
-    *   `https://github.com/<YOUR_ORG>/<YOUR_REPO>.git`
-*   **Where to change it:**
-    *   `gitops-control-plane/values.yaml` (Under `argocd.repoUrl`)
-    *   `gitops-control-plane/templates/ApplicationSet.yaml`
-    *   The `kubectl create secret` command you run in the Setup Guide.
-
-### 2.4 Changing OIDC Configuration
-GitHub Actions needs permission to assume roles in your specific AWS Account.
-
-*   **Search for these values:** The CloudFormation deployment command.
-*   **Where to change it:** 
-    *   When deploying `aws-oidc-github-role.yaml`, ensure you pass `--parameter-overrides GitHubOrg=<YOUR_ORG> GitHubRepo=<YOUR_REPO>`.
-
-### 2.5 Changing Cluster Names & Namespaces
-If you are deploying multiple copies of this platform into the same AWS account (e.g., `staging` and `production`), you must ensure the cluster names do not collide.
-
-*   **Search for these values:** `my-eks-cluster`
-*   **Where to change it:**
-    *   `terraform-eks/eks.tf` (Under the `name` variable)
-    *   `terraform-eks/locals.tf`
-*   **Namespaces:** The namespaces for applications are dynamically generated by Argo CD based on the `environment` variable in `apps/*/values.yaml`. To change where apps are deployed, simply edit the `environment` string.
-
-### 2.6 Changing Notification Settings
-Argo CD sends automated alerts on deployment success or failure. You must update these so they go to your team, not the original author.
-
-*   **Search for these values:** `notifications.argoproj.io/subscribe.on-deployed.email`
-*   **Where to change it:**
-    *   `gitops-control-plane/values.yaml` (Under `notifications.email.receiver`)
-    *   The `kubectl create secret generic argocd-notifications-secret` command.
+### Option B: The Multi-Directory Strategy (Enterprise)
+1. Restructure the Terraform folders: `terraform-eks-staging` and `terraform-eks-prod`.
+2. Give each folder its own `remote-backend` configuration.
+3. In `gitops-control-plane`, create a `values-staging.yaml` and `values-prod.yaml` to deploy different application configurations based on the cluster.
 
 ---
 
-## 3. Reusing the Helm Blueprint
+## 3. Customizing the GitOps Engine
 
-The `charts/common-microservices` directory is designed to be highly generic. If you need to add custom Kubernetes resources (like an `ExternalSecret` or a `CronJob`) that applies to *all* your microservices, add it to the `templates/` folder of this chart.
+The `gitops-control-plane` directory is the master configuration for your entire platform. When reusing this template, remember that changes here affect *all* microservices.
 
-If a setting only applies to a *single* microservice, do not modify the blueprint. Instead, add the override to that specific service's `apps/<service-name>/values.yaml` file.
+*   **Email Notifications:** By default, Argo CD will send emails on sync failures. You must update `notifications.email` in `gitops-control-plane/values.yaml` with your SMTP server and team addresses.
+*   **App Prefixing:** If you are deploying multiple projects into the same cluster, use `argocd.appPrefix` to namespace your applications (e.g., `finance-backend` vs `hr-backend`) to avoid Argo CD naming collisions.
