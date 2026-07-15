@@ -56,7 +56,12 @@ aws cloudformation deploy \
   --capabilities CAPABILITY_NAMED_IAM
 ```
 **Explanation:** Creates an Identity Provider and an IAM Role trusting `token.actions.githubusercontent.com`.
-**Next Action:** Add the outputted Role ARN as a GitHub Repository Secret named `AWS_ROLE_ARN`.
+**Next Action (GitHub Setup):** 
+1. Get the generated Role ARN by running: 
+   `aws cloudformation describe-stacks --stack-name github-oidc-terraform-role --query "Stacks[0].Outputs[?OutputKey=='RoleArn'].OutputValue" --output text`
+2. Go to your GitHub Repository -> **Settings** -> **Secrets and variables** -> **Actions**.
+3. Under **Secrets**, click *New repository secret*, name it `AWS_ROLE_ARN`, and paste the ARN.
+4. (Optional) Under **Variables**, add a new repository variable named `AWS_REGION` if your region is not `us-east-1`.
 
 ### 2.4 Provision the EKS Cluster
 **Purpose:** Deploys the VPC, Subnets, Internet Gateway, EKS Control Plane, and Managed Node Groups.
