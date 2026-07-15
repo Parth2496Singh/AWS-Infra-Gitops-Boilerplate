@@ -1,11 +1,12 @@
-{{- if eq (default "Deployment" .Values.workloadType) "Deployment" }}
+{{- if eq .Values.workloadType "StatefulSet" }}
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: {{ .Release.Name }}
   labels:
     app: {{ .Release.Name }}
 spec:
+  serviceName: {{ .Release.Name }}
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:

@@ -39,3 +39,41 @@ resources:
   limits:
     cpu: "200m"
     memory: "256Mi"
+
+# ==========================================
+# ADVANCED GITOPS TEMPLATE SETTINGS
+# ==========================================
+
+# Choose the core workload type: Deployment, StatefulSet, or DaemonSet.
+# Defaults to Deployment if not set.
+workloadType: "Deployment"
+
+# Environment Variables (ConfigMap)
+# Automatically creates a ConfigMap and mounts it to the workload.
+# envConfig:
+#   DATABASE_URL: "postgres://db:5432"
+#   LOG_LEVEL: "debug"
+
+# Secrets
+# Automatically creates a Secret and mounts it to the workload.
+# secrets:
+#   API_KEY: "super-secret-key"
+
+# Prometheus Operator Metrics (ServiceMonitor)
+metrics:
+  enabled: false
+  port: "http"
+  path: "/metrics"
+  interval: "30s"
+
+# Extra Manifests Escape Hatch
+# Allows you to inject any raw Kubernetes YAML (CronJobs, NetworkPolicies, etc.)
+# extraManifests:
+#   - apiVersion: batch/v1
+#     kind: CronJob
+#     metadata:
+#       name: my-custom-job
+#     spec:
+#       schedule: "0 * * * *"
+#       jobTemplate:
+#         spec: ...
