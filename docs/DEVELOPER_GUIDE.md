@@ -8,11 +8,15 @@ Because this template is highly advanced, a single `values.yaml` file can comple
 
 ## 1. How to Add a New Microservice
 
-Adding a new application to the cluster is completely automated via GitOps (Argo CD).
+Adding a new application to the cluster is completely automated via GitOps (Argo CD). You do not need to write any Helm templates yourself!
 
-1. **Create a new directory** under `apps/` with your application name (e.g., `apps/my-new-app/`).
-2. **Create a `values.yaml`** inside that directory.
-3. **Commit and push** to the `main` branch. 
+1. **Create a new folder** inside the `apps/` directory with your application's name (e.g., `apps/payment-service/`).
+2. **Copy the default blueprint values:**
+   ```bash
+   cp charts/common-microservices/values.yaml apps/payment-service/values.yaml
+   ```
+3. **Edit your new `values.yaml`** to match your application's specific requirements (e.g., change the Docker image, port, environment variables).
+4. **Commit and push** to the `main` branch. 
    *(Argo CD will automatically detect the new folder via its ApplicationSet and instantly deploy it using the universal blueprint).*
 
 ---
@@ -90,6 +94,19 @@ extraManifests:
 
 ---
 
-## 3. Best Practices for Developers
+## 3. Configuring the Global GitOps Engine (`gitops-control-plane`)
+
+While the `apps/` directory controls individual microservices, the **`gitops-control-plane/values.yaml`** file controls the master Argo CD deployment engine itself. 
+
+If you are setting up this boilerplate for a new project, you **must** edit this file to ensure Argo CD knows where to look for your code:
+
+*   **`argocd.repoUrl`**: Change this to the Git URL of your repository. If you don't, Argo CD will try to deploy code from the original Boilerplate repo!
+*   **`argocd.appPrefix`**: Prepended to all your apps (e.g., if prefix is "acme", the backend app becomes "acme-backend").
+*   **`notifications.email`**: Update the `sender`, `receiver`, and `host` to point to your actual team's email addresses so you get alerted when deployments succeed or fail.
+*   **`registry.ecrBaseUrl`**: Update this with your 12-digit AWS Account ID and region so the Image Updater knows where to look for new Docker tags.
+
+---
+
+## 4. Best Practices for Developers
 *   **Never modify `charts/common-microservices`** unless the change applies globally to *every single microservice*.
 *   **Keep it DRY**: If you find yourself using `extraManifests` to deploy a `CronJob` across 15 different microservices, it is time to ask the Platform Engineering team to build a native `cronjob.yaml` template into the Universal Chart.
