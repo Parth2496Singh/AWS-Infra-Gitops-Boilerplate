@@ -114,6 +114,17 @@ To make this frictionless, we have provided an automated bootstrap script.
    ```
 3. **Enable CI/CD**: Open `.github/workflows/terraform-cicd.yaml` and uncomment the `push:` and `pull_request:` triggers to activate your deployment pipeline.
 
+### 🥚 The GitOps "Chicken-and-Egg" Workflow
+
+When deploying a GitOps architecture from scratch, you will naturally encounter a dependency loop:
+*   Your `gitops-control-plane/values.yaml` requires a `publicUrl` for Argo CD notifications.
+*   Your applications in the `apps/` directory might require public ingress domains.
+*   *But you don't know those URLs until Terraform provisions EKS and the AWS Controller generates the Load Balancer DNS!*
+
+**The Solution is a Two-Phase approach:**
+1.  **Phase 1 (Pre-Provision):** Leave `publicUrl` and ingress domains blank (or use temporary placeholders). Use the Developer Guide to copy `charts/common-microservices/values.yaml` into your `apps/` directory to define your microservices. Commit everything to Git and run Terraform.
+2.  **Phase 2 (Post-Provision):** Once EKS is live, run `kubectl get ingress -A` to retrieve the real AWS Load Balancer URLs. Update your `gitops-control-plane/values.yaml` and app ingress rules with these live URLs, commit, and push. Argo CD will instantly detect the commit and seamlessly wire up internet traffic to your pods!
+
 > **Important Note:** You must also manually replace `my-project-terraform-state-bucket`, `my-project-terraform-lock-table`, and `my-eks-cluster` with your own unique names inside the Terraform files to avoid AWS state collisions. See the **[Reusability Guide](docs/REUSABILITY_GUIDE.md)** for the full checklist!
 
 ## 🗺️ Future Roadmap
