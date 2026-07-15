@@ -91,6 +91,7 @@ By utilizing Terraform and Argo CD automation, this project achieves a **90%+ re
 To make this repository easy to navigate and reuse, the documentation has been distributed into focused manuals:
 
 *   🚀 **[Setup Guide](docs/SETUP_GUIDE.md):** The comprehensive, step-by-step manual for provisioning the AWS infrastructure and bootstrapping the GitOps engine from scratch.
+*   💻 **[Developer Guide](docs/DEVELOPER_GUIDE.md):** A manual for application teams on how to onboard new microservices and configure the advanced Universal Helm template.
 *   🧠 **[Architecture Deep Dive](docs/ARCHITECTURE.md):** An in-depth exploration of the system design, including OIDC trust policies, ApplicationSet configurations, and networking boundaries.
 *   🧬 **[Reusability Guide (Forking)](docs/REUSABILITY_GUIDE.md):** A checklist of exactly which hardcoded values (AWS IDs, S3 buckets) must be changed if you intend to clone this template for a new project.
 *   🛠️ **[Troubleshooting Runbook](docs/TROUBLESHOOTING.md):** Operational guides for resolving common platform failures (e.g., Terraform deadlocks, Argo CD OutOfSync errors).
