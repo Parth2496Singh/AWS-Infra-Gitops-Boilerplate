@@ -29,24 +29,28 @@ By default, your app is deployed as a Kubernetes `Deployment`. If your applicati
 workloadType: "StatefulSet"
 ```
 
-### 2.2 Injecting Environment Variables (ConfigMaps)
-Do **not** write raw ConfigMap YAML. The universal chart will dynamically generate a ConfigMap and mount it directly into your Pod's environment via `envFrom` if you define the `envConfig` dictionary:
+### 2.2 Migrating Local `.env` Files to Kubernetes
+In local development (Docker Compose), you rely on a `.env` file to pass environment variables to your application. In Kubernetes, you cannot mount a `.env` file directly. Instead, Kubernetes uses **ConfigMaps** (for non-sensitive data) and **Secrets** (for sensitive passwords/tokens).
 
+Our Universal Helm Chart makes this migration effortless. You simply copy-paste the values from your `.env` file directly into your `values.yaml` using the `envConfig` and `secrets` blocks. The chart will dynamically generate the Kubernetes objects and inject them into your Pod as standard environment variables (so your code can still read them natively via `process.env` or `os.environ`).
+
+#### Non-Sensitive Variables (ConfigMap)
+Do **not** write raw ConfigMap YAML. Define them here:
 ```yaml
 envConfig:
-  DATABASE_URL: "postgres://db.internal:5432"
-  LOG_LEVEL: "info"
-  CACHE_ENABLED: "true"
+  DJANGO_DEBUG: "True"
+  NODE_ENV: "production"
+  BACKEND_INTERNAL_URL: "http://backend:8000"
 ```
 
-### 2.3 Injecting Secure Secrets
-Similarly, you can dynamically generate and mount Kubernetes Secrets.
-*(Note: In a true production environment, consider using External Secrets Operator instead of committing plaintext secrets).*
-
+#### Sensitive Variables (Secrets)
+Similarly, you can dynamically generate and mount Kubernetes Secrets:
+*(Note: In a true production environment, consider using External Secrets Operator (ESO) instead of committing plaintext secrets to Git).*
 ```yaml
 secrets:
-  API_KEY: "my-super-secret-key"
-  DB_PASSWORD: "secure-password-123"
+  DATABASE_URL: "postgres://user:password@aws-0-us-east-1.pooler.supabase.com:6543/postgres"
+  GITHUB_PAT: "your_github_personal_access_token_here"
+  DJANGO_SECRET_KEY: "velzion-insecure-key"
 ```
 
 ### 2.4 Enabling Prometheus Metrics (ServiceMonitor)
