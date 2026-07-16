@@ -64,6 +64,14 @@ common-microservice:
     path: "/metrics"  # The endpoint where metrics are exposed
     interval: "30s"   # How often Prometheus should scrape
 
+  # Extra Ports (Expose additional ports on the Kubernetes Service)
+  # Useful if you add a sidecar container that needs its own port (like a metrics exporter)
+  # extraPorts:
+  #   - name: metrics
+  #     port: 9113
+  #     targetPort: 9113
+  #     protocol: TCP
+
   # Extra Manifests Escape Hatch
   # Allows you to inject any raw Kubernetes YAML (CronJobs, NetworkPolicies, etc.)
   # extraManifests:

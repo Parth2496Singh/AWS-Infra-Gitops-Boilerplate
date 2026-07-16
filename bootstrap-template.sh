@@ -43,6 +43,9 @@ bulk_replace() {
   find . -type f -not -path "*/\.git/*" -not -path "*/\.terraform/*" -not -name "bootstrap-template.sh" -exec bash -c 'sedi "s|$1|$2|g" "$0"' {} "$search" "$replace" \;
 }
 
+# Convert PROJECT_NAME to lowercase to prevent Kubernetes DNS naming errors (e.g., capitals in Application or Service names)
+PROJECT_NAME=$(echo "$PROJECT_NAME" | tr '[:upper:]' '[:lower:]')
+
 bulk_replace "<YOUR_PROJECT_NAME>" "$PROJECT_NAME"
 bulk_replace "<YOUR_AWS_ACCOUNT_ID>" "$AWS_ACCOUNT_ID"
 bulk_replace "<YOUR_AWS_REGION>" "$AWS_REGION"

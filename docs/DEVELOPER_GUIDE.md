@@ -39,7 +39,28 @@ Adding a new application to the cluster is completely automated via GitOps. We u
 
 ---
 
-## 2. Configuring the Universal Template (`values.yaml`)
+## 2. Service Discovery (Cross-Pod Communication)
+When microservices talk to each other (e.g., an NGINX frontend proxying to a Django backend), you must use the exact Kubernetes Service name. 
+
+Because we use the `appPrefix` in Argo CD to group your applications, **your Service names will be prefixed with your Project Name.**
+
+**Example Scenario:**
+*   Project Name: `lost-found`
+*   Backend Folder: `apps/backend/`
+*   **Resulting Service Name:** `lost-found-backend`
+
+If you are configuring `nginx.conf` in your frontend, your `proxy_pass` must match the prefixed name exactly:
+```nginx
+# WRONG (Will crash):
+# proxy_pass http://backend:8080;
+
+# CORRECT:
+proxy_pass http://lost-found-backend:8080;
+```
+
+---
+
+## 3. Configuring the Universal Template (`values.yaml`)
 
 The Universal Helm Chart acts as a machine. Depending on what you toggle in your `values.yaml`, it will generate different Kubernetes resources. Below is a comprehensive guide to all advanced configurations.
 
@@ -102,6 +123,17 @@ common-microservice:
         - -nginx.scrape-uri=http://127.0.0.1:80/nginx_status
       ports:
         - containerPort: 9113
+
+  # IMPORTANT: You must also expose this port on the Service!
+  extraPorts:
+    - name: metrics
+      port: 9113
+      targetPort: 9113
+      protocol: TCP
+
+  metrics:
+    enabled: true
+    port: metrics    # Scrape the newly exposed metrics port!
 ```
 
 ### 2.6 The Escape Hatch (Raw Kubernetes Manifests)
