@@ -11,9 +11,24 @@ type: kubernetes.io/dockerconfigjson
 data:
   .dockerconfigjson: "e30=" # base64 encoded "{}"
 ---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ecr-helm-repo-secret
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repository
+type: Opaque
+stringData:
+  name: aws-ecr-helm
+  url: {{ .Values.registry.ecrBaseUrl }}
+  type: helm
+  enableOCI: "true"
+  username: AWS
+  password: "" # The CronJob will inject the token here
+---
 ## Security
-# This Role strictly limits the CronJob's K8s API access to modifying ONLY the `ecr-registry-secret`.
-# If the CronJob pod is compromised, the blast radius is confined to this single secret.
+# This Role strictly limits the CronJob's K8s API access to modifying ONLY the ECR secrets.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -22,7 +37,7 @@ metadata:
 rules:
 - apiGroups: [""]
   resources: ["secrets"]
-  resourceNames: ["ecr-registry-secret"]
+  resourceNames: ["ecr-registry-secret", "ecr-helm-repo-secret"]
   verbs: ["patch", "get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -48,7 +63,6 @@ metadata:
 spec:
   ## Reliability
   # The schedule is set to 8 hours to safely beat the 12-hour ECR token expiration window.
-  # The history limits prevent the cluster from being flooded with old, completed Job pods.
   schedule: "0 */8 * * *" # AWS ECR tokens expire after 12 hours
   successfulJobsHistoryLimit: 1
   failedJobsHistoryLimit: 1
@@ -69,19 +83,28 @@ spec:
               echo "Fetching ECR token via IAM Role..."
               TOKEN=$(aws ecr get-login-password --region us-east-1)
               
-              # Generate Docker config JSON format for AWS ECR
+              # 1. Update the Docker config for Kubernetes Image Pulls
               AUTH=$(echo -n "AWS:$TOKEN" | base64 | tr -d '\n')
-              DOCKER_CONFIG="{\"auths\":{\"<YOUR_AWS_ACCOUNT_ID>.dkr.ecr.<YOUR_AWS_REGION>.amazonaws.com\":{\"username\":\"AWS\",\"password\":\"$TOKEN\",\"email\":\"none\",\"auth\":\"$AUTH\"}}}"
+              DOCKER_CONFIG="{\"auths\":{\"{{ .Values.registry.ecrBaseUrl }}\":{\"username\":\"AWS\",\"password\":\"$TOKEN\",\"email\":\"none\",\"auth\":\"$AUTH\"}}}"
               DOCKER_CONFIG_B64=$(echo -n "$DOCKER_CONFIG" | base64 | tr -d '\n')
               
-              echo "Patching Kubernetes Secret using native K8s API..."
               CACERT=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
               SA_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
               
+              echo "Patching Kubernetes Docker Secret..."
               curl -s --cacert $CACERT -H "Authorization: Bearer $SA_TOKEN" \
                 -H "Content-Type: application/strategic-merge-patch+json" \
                 -X PATCH \
                 -d "{\"data\": {\".dockerconfigjson\": \"$DOCKER_CONFIG_B64\"}}" \
                 https://kubernetes.default.svc/api/v1/namespaces/argocd/secrets/ecr-registry-secret
               
-              echo "ECR token successfully updated!"
+              # 2. Update the Argo CD Repository Secret for OCI Helm Charts
+              TOKEN_B64=$(echo -n "$TOKEN" | base64 | tr -d '\n')
+              echo "Patching Argo CD OCI Helm Secret..."
+              curl -s --cacert $CACERT -H "Authorization: Bearer $SA_TOKEN" \
+                -H "Content-Type: application/strategic-merge-patch+json" \
+                -X PATCH \
+                -d "{\"data\": {\"password\": \"$TOKEN_B64\"}}" \
+                https://kubernetes.default.svc/api/v1/namespaces/argocd/secrets/ecr-helm-repo-secret
+
+              echo "ECR tokens successfully updated for both Docker and Helm!"

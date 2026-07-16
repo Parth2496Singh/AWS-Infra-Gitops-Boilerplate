@@ -77,3 +77,41 @@ This guide serves as the primary runbook for diagnosing and resolving common pla
 *   **Symptoms:** The GitHub Actions pipeline fails immediately at the `aws-actions/configure-aws-credentials` step.
 *   **Root Cause:** The OIDC trust policy in AWS does not match the GitHub repository attempting to assume the role.
 *   **Resolution:** Verify that the `aws-oidc-github-role.yaml` CloudFormation stack was deployed with the exact `GitHubOrg` and `GitHubRepo` parameters matching your current repository. Verify the `id-token: write` permission is present in the GitHub Actions YAML.
+
+---
+
+## 5. Universal Helm Chart & OCI Dependencies
+
+### Issue: Argo CD `PermissionDenied` for OCI Helm Repositories
+*   **Symptoms:** Argo CD fails to sync with error: `helm repos <registry> are not permitted in project <projectName>`.
+*   **Root Cause:** By default, the Argo CD `AppProject` acts as a strict firewall and only allows pulling code from your specific GitHub repository. It actively blocks outgoing requests to AWS ECR to pull your Universal Helm Chart dependencies.
+*   **Resolution:** Open `gitops-control-plane/templates/AppProject.yaml` and add `- "*"` to the `sourceRepos` list, then upgrade the control plane via Helm.
+
+### Issue: `401 Unauthorized` when downloading OCI Helm Charts
+*   **Symptoms:** Argo CD returns `helm dependency build failed... 401 Unauthorized` despite the ECR CronJob running successfully.
+*   **Root Cause:** Argo CD requires TWO distinct secrets to interact with AWS ECR. It needs a `kubernetes.io/dockerconfigjson` secret for pulling Docker containers, and a `type: Opaque` secret with `argocd.argoproj.io/secret-type: repository` labels for pulling OCI Helm charts. The CronJob was only creating the Docker secret.
+*   **Resolution:** Ensure your `ecr-auth-job.yaml` CronJob is configured to patch BOTH secrets, delete the old secrets, and run the job manually once.
+
+### Issue: The "Double URL" Error (`/common-microservice/common-microservice`)
+*   **Symptoms:** `could not download oci://.../universal-helm-chart/common-microservice/common-microservice`.
+*   **Root Cause:** Helm 3 OCI resolution automatically appends the `name:` of the dependency to the end of the `repository:` string in your `Chart.yaml`. If you manually added the chart name to the end of your repository URL, Helm appends it a second time, breaking the path.
+*   **Resolution:** Remove the chart name from the end of the `repository:` URL in your application's `Chart.yaml`. It should point only to the registry's base folder (`oci://.../universal-helm-chart`).
+
+---
+
+## 6. Monitoring & Networking
+
+### Issue: ServiceMonitor `Invalid value: "integer"`
+*   **Symptoms:** Kubernetes rejects the Helm sync: `spec.endpoints[0].port in body must be of type string: "integer"`.
+*   **Root Cause:** The Prometheus `ServiceMonitor` CRD requires the `port` field to be the **string name** of the port defined in the Kubernetes Service (e.g., `metrics`), not the numeric port value (e.g., `9113`). Even if wrapped in quotes, Helm templating evaluates `"9113"` as a pure integer, which fails OpenAPI validation.
+*   **Resolution:** Change the `port:` value in your `values.yaml` `metrics` block to exactly match the `name:` of the port defined in your `extraPorts` block (e.g., `port: metrics`).
+
+### Issue: NGINX `host not found in upstream`
+*   **Symptoms:** The NGINX sidecar or frontend container crashes on startup with `host not found in upstream "backend"`.
+*   **Root Cause:** When NGINX tries to route traffic to another microservice using `proxy_pass`, it relies on Kubernetes DNS. Argo CD automatically prepends your `appPrefix` (e.g., `my-project`) to all Service names to group them together. Thus, the backend service is named `my-project-backend`, not `backend`.
+*   **Resolution:** Update your `nginx.conf` to use the fully-prefixed Kubernetes Service name (e.g., `proxy_pass http://my-project-backend:8001;`), and ensure you are targeting the correct internal container port, not necessarily port 80.
+
+### Issue: Image Updater "Deadlock" (Tags not updating)
+*   **Symptoms:** A new Docker tag is pushed to ECR, but the Image Updater refuses to update the application manifest in GitHub.
+*   **Root Cause:** The Image Updater will **never** update an application that is in a `Degraded` or `SyncFailed` state (such as a Pod in a `CrashLoopBackOff` due to an NGINX typo, or a rejected `ServiceMonitor` YAML). It intentionally pauses updates to prevent compounding failures.
+*   **Resolution:** You must manually fix the crash or invalid YAML by committing a fix (and manually updating the image tag if needed) to turn the app `Healthy`. Once green, the Image Updater will resume its automated scanning.

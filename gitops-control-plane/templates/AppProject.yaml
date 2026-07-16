@@ -7,6 +7,8 @@ spec:
   description: "Core project for {{ .Values.environment }} microservices"
   sourceRepos:
     - "{{ .Values.argocd.repoUrl }}"
+    # Wildcard required to allow Argo CD to pull OCI Helm dependencies from AWS ECR
+    - "*"
   destinations:
     - namespace: {{ .Values.environment }}
       server: "{{ .Values.cluster.serverUrl }}"

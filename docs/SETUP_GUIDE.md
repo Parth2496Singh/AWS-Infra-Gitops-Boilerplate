@@ -157,42 +157,33 @@ kubectl rollout restart deployment argocd-image-updater-controller -n argocd
 
 ---
 
-## 5. Teardown & Cleanup
+## 6. Teardown & Cleanup
 
 > **CRITICAL - AVOID VPC DEPENDENCY ERRORS:** The AWS Load Balancer Controller dynamically creates physical AWS Application Load Balancers (ALBs) and Security Groups. Because Terraform did not create them, Terraform cannot delete them. If you run `terraform destroy` while these exist, AWS will block the VPC deletion, requiring painful manual cleanup.
 
 Follow this exact sequence to safely destroy the cluster:
 
-### Phase 1: Graceful Kubernetes Cleanup
+**Phase 1: Graceful Kubernetes Cleanup**
+1. `kubectl delete ingress --all -A`
+2. `kubectl delete svc ingress-nginx-controller -n ingress-nginx --ignore-not-found`
+3. Wait **3 to 10 minutes** for the AWS Load Balancer Controller to physically detach the Elastic Network Interfaces (ENIs) from your Subnets. *(AWS is notoriously slow at deprovisioning ALBs).*
+
+**Phase 2: Verification (DO NOT SKIP)**
+> ⚠️ **WARNING:** This step is NOT a bluff! If you run `terraform destroy` while ALBs still exist, Terraform will kill your EKS cluster before AWS finishes deleting the ALB, permanently trapping orphaned Security Groups in your VPC.
+
+Before running Terraform, ensure the AWS Load Balancer Controller has successfully finished deleting the ALBs:
 ```bash
-kubectl delete ingress --all -A
-kubectl delete svc ingress-nginx-controller -n ingress-nginx --ignore-not-found
+aws elbv2 describe-load-balancers --region us-east-1 --query 'LoadBalancers[*].[LoadBalancerName]'
 ```
-*Wait exactly 2 to 3 minutes for the AWS Load Balancer Controller to physically detach the Elastic Network Interfaces (ENIs) from your Subnets.*
+*   ✅ If this returns an empty array `[]`, you are safe to proceed. 
+*   ❌ If it still lists your ALBs, **DO NOT proceed**. Wait a few more minutes and run the command again.
+*   🚨 **Fallback:** If you accidentally ignored this warning and your `terraform destroy` is failing with a `DependencyViolation` error on the VPC, refer directly to the **[Troubleshooting Guide](TROUBLESHOOTING.md)** to manually purge the ghost resources.
 
-### Phase 2: Manual AWS Verification (Mandatory)
-Before running Terraform, verify that no orphaned resources remain in your VPC to block deletion.
+**Phase 3: Terraform Destroy**
+Once you have verified the AWS resources are gone, you are safe to destroy the infrastructure. 
 
-1. **Get your VPC ID** (e.g. from AWS Console or terraform output).
-2. **Check for orphaned Load Balancers:**
-   ```bash
-   aws elbv2 describe-load-balancers --region us-east-1 --query 'LoadBalancers[*].[LoadBalancerName,LoadBalancerArn,VpcId]'
-   ```
-   *If any ALBs appear here, delete them:*
-   ```bash
-   aws elbv2 delete-load-balancer --load-balancer-arn <ARN> --region us-east-1
-   ```
-3. **Check for orphaned Kubernetes Security Groups:**
-   ```bash
-   aws ec2 describe-security-groups --filters Name=vpc-id,Values=<YOUR_VPC_ID> --region us-east-1 --query 'SecurityGroups[*].[GroupId,GroupName]'
-   ```
-   *If you see any groups prefixed with `k8s-` (ignore the default group), delete them:*
-   ```bash
-   aws ec2 delete-security-group --group-id <SG_ID> --region us-east-1
-   ```
+> **⏱️ Estimated Time to Destroy:** ~10 to 15 minutes.
 
-### Phase 3: Terraform Destroy
-Once you have verified the AWS resources are gone, you are safe to destroy the infrastructure. (This typically takes **10-15 minutes**).
 ```bash
 cd terraform-eks/
 terraform destroy -auto-approve
