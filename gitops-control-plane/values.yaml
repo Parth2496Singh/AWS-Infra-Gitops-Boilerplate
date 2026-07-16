@@ -26,9 +26,9 @@ argocd:
 notifications:
   email:
     # The email address Argo CD will use to send deployment alerts.
-    sender: "<YOUR_EMAIL>@example.com"
+    sender: "<YOUR_EMAIL>"
     # The email address that will receive the deployment alerts.
-    receiver: "<YOUR_EMAIL>@example.com"
+    receiver: "<YOUR_EMAIL>"
     # SMTP server configuration (Default is Gmail).
     host: "smtp.gmail.com"
     port: 465
