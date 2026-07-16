@@ -126,5 +126,5 @@ If you are setting up this boilerplate for a new project, you **must** edit this
 ---
 
 ## 4. Best Practices for Developers
-*   **The Blueprint is External:** The universal blueprint lives in its own repository (`universal-helm-chart`). If you need a new global Kubernetes resource (like a `CronJob` template), you must contribute to that repository and bump the `version` tag.
+*   **The Blueprint is External:** The universal blueprint lives in its own repository: **[universal-helm-chart](https://github.com/Parth2496Singh/universal-helm-chart)**. If you need a new global Kubernetes resource (like a `CronJob` template), you must contribute to that repository and bump the `version` tag.
 *   **Keep it DRY**: If you find yourself using `extraManifests` to deploy the exact same resource across 15 different microservices, it is time to ask the Platform Engineering team to build it natively into the `universal-helm-chart`.
