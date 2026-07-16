@@ -90,7 +90,21 @@ common-microservice:
     interval: "30s"     # How often Prometheus should scrape
 ```
 
-### 2.5 The Escape Hatch (Raw Kubernetes Manifests)
+### 2.5 Injecting Sidecars (`extraContainers`)
+If your application requires a sidecar (like a Prometheus exporter, logging agent, or Cloud SQL Proxy), you can seamlessly inject raw container YAML into the same Pod without modifying the underlying blueprint:
+
+```yaml
+common-microservice:
+  extraContainers:
+    - name: nginx-exporter
+      image: nginx/nginx-prometheus-exporter:1.1.0
+      args:
+        - -nginx.scrape-uri=http://127.0.0.1:80/nginx_status
+      ports:
+        - containerPort: 9113
+```
+
+### 2.6 The Escape Hatch (Raw Kubernetes Manifests)
 If your microservice requires a highly specific Kubernetes resource that the Universal Chart doesn't support (e.g., a `NetworkPolicy`, `CronJob`, or a custom `RoleBinding`), use the `extraManifests` escape hatch.
 
 The template will read this list and render it exactly as raw YAML:
