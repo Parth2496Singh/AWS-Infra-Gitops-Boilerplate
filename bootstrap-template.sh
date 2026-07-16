@@ -12,8 +12,8 @@
 export PROJECT_NAME="my-awesome-app"
 export AWS_ACCOUNT_ID="123456789012"
 export AWS_REGION="us-east-1" 
-export GITHUB_ORG="my-org" #Github Username
-export GITHUB_REPO="my-repo" #Repo Name
+export GITHUB_ORG="my-org" #Github Username (Example-username)
+export GITHUB_REPO="my-repo" #Repo Name (Example-my-repo. Don't usse full repo link)
 export EMAIL="admin@example.com"
 export MY_NAME="Jane Doe"
 # --- TERRAFORM SPECIFIC ---

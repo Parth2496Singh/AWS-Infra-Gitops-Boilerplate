@@ -1,7 +1,12 @@
 common-microservice:
-  # apps/example-microservice/values.yaml
-  # OVERRIDES for your example microservice.
-  # These values automatically overwrite the defaults in 'charts/common-microservices/values.yaml'.
+  # ==========================================
+  # UNIVERSAL HELM CHART OVERRIDES
+  # ==========================================
+  # This file serves as the definitive reference template for your microservices.
+  # Because the blueprint lives in AWS ECR, override the values here!
+
+  # Choose the core workload type: Deployment, StatefulSet, or DaemonSet.
+  workloadType: "Deployment"
 
   # Number of pods to run for high availability.
   replicaCount: 2
@@ -9,14 +14,46 @@ common-microservice:
   image:
     # The exact AWS ECR repository URL for the microservice image.
     repository: <YOUR_AWS_ACCOUNT_ID>.dkr.ecr.<YOUR_AWS_REGION>.amazonaws.com/<YOUR_PROJECT_NAME>/example-microservice
-    # The specific Docker tag to deploy. (Argo CD Image Updater will bump this automatically).
     tag: v1.0.0
+    pullPolicy: IfNotPresent
 
   service:
-    # The internal port that your application container is listening on.
+    type: ClusterIP
     port: 8080
 
   ingress:
     # Set to true if you want this microservice to be publicly accessible via the AWS Load Balancer.
-    # Set to false if it should only be accessed internally by other services via the Kubernetes Service.
     enabled: false
+    className: "alb"
+    host: ""
+    path: "/"
+
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+    limits:
+      cpu: "200m"
+      memory: "256Mi"
+
+  # Environment Variables (ConfigMap)
+  # envConfig:
+  #   DATABASE_URL: "postgres://db:5432"
+  #   LOG_LEVEL: "debug"
+
+  # Secrets (Automatically creates a Secret)
+  # secrets:
+  #   API_KEY: "super-secret-key"
+
+  # Prometheus Operator Metrics
+  metrics:
+    enabled: false
+    port: "http"
+    path: "/metrics"
+    interval: "30s"
+
+  # Extra Manifests Escape Hatch (CronJobs, NetworkPolicies, etc.)
+  # extraManifests:
+  #   - apiVersion: batch/v1
+  #     kind: CronJob
+  #     ...

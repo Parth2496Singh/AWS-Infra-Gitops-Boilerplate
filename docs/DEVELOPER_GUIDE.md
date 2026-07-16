@@ -1,6 +1,6 @@
 # 💻 Developer Guide: Application Onboarding & Helm Blueprint
 
-This guide explains how developers can leverage the **Universal DRY Helm Chart** located in `charts/common-microservices` to instantly deploy and scale their applications without writing raw Kubernetes YAML.
+This guide explains how developers can leverage the **Universal DRY Helm Chart** to instantly deploy and scale their applications without writing raw Kubernetes YAML. The definitive reference template can be found in `apps/example-microservice/values.yaml`.
 
 Because this template is highly advanced, a single `values.yaml` file can completely transform the underlying Kubernetes architecture, allowing you to deploy Deployments, StatefulSets, DaemonSets, ConfigMaps, Secrets, and ServiceMonitors effortlessly.
 
@@ -47,8 +47,9 @@ The Universal Helm Chart acts as a machine. Depending on what you toggle in your
 By default, your app is deployed as a Kubernetes `Deployment`. If your application requires stateful persistent storage or needs to run exactly one Pod on every Node, you can instantly change the core architecture:
 
 ```yaml
-# Options: "Deployment", "StatefulSet", "DaemonSet"
-workloadType: "StatefulSet"
+common-microservice:
+  # Options: "Deployment", "StatefulSet", "DaemonSet"
+  workloadType: "StatefulSet"
 ```
 
 ### 2.2 Migrating Local `.env` Files to Kubernetes
@@ -59,31 +60,34 @@ Our Universal Helm Chart makes this migration effortless. You simply copy-paste 
 #### Non-Sensitive Variables (ConfigMap)
 Do **not** write raw ConfigMap YAML. Define them here:
 ```yaml
-envConfig:
-  DJANGO_DEBUG: "True"
-  NODE_ENV: "production"
-  BACKEND_INTERNAL_URL: "http://backend:8000"
+common-microservice:
+  envConfig:
+    DJANGO_DEBUG: "True"
+    NODE_ENV: "production"
+    BACKEND_INTERNAL_URL: "http://backend:8000"
 ```
 
 #### Sensitive Variables (Secrets)
 Similarly, you can dynamically generate and mount Kubernetes Secrets:
 *(Note: In a true production environment, consider using External Secrets Operator (ESO) instead of committing plaintext secrets to Git).*
 ```yaml
-secrets:
-  DATABASE_URL: "postgres://user:password@aws-0-us-east-1.pooler.supabase.com:6543/postgres"
-  GITHUB_PAT: "your_github_personal_access_token_here"
-  DJANGO_SECRET_KEY: "velzion-insecure-key"
+common-microservice:
+  secrets:
+    DATABASE_URL: "postgres://user:password@aws-0-us-east-1.pooler.supabase.com:6543/postgres"
+    GITHUB_PAT: "your_github_personal_access_token_here"
+    DJANGO_SECRET_KEY: "velzion-insecure-key"
 ```
 
 ### 2.4 Enabling Prometheus Metrics (ServiceMonitor)
 If your application exposes a `/metrics` endpoint, you can automatically generate a Prometheus `ServiceMonitor` to tell the Prometheus Operator to start scraping it. No `ServiceMonitor` YAML required!
 
 ```yaml
-metrics:
-  enabled: true       # Turns on the ServiceMonitor generation
-  port: "http"        # Must match the named port in the Service
-  path: "/metrics"    # The URL path where metrics are exposed
-  interval: "30s"     # How often Prometheus should scrape
+common-microservice:
+  metrics:
+    enabled: true       # Turns on the ServiceMonitor generation
+    port: "http"        # Must match the named port in the Service
+    path: "/metrics"    # The URL path where metrics are exposed
+    interval: "30s"     # How often Prometheus should scrape
 ```
 
 ### 2.5 The Escape Hatch (Raw Kubernetes Manifests)
@@ -92,22 +96,23 @@ If your microservice requires a highly specific Kubernetes resource that the Uni
 The template will read this list and render it exactly as raw YAML:
 
 ```yaml
-extraManifests:
-  - apiVersion: batch/v1
-    kind: CronJob
-    metadata:
-      name: my-app-cleanup-job
-    spec:
-      schedule: "0 2 * * *"
-      jobTemplate:
-        spec:
-          template:
-            spec:
-              containers:
-                - name: cleaner
-                  image: busybox
-                  args: ["echo", "cleaning up!"]
-              restartPolicy: OnFailure
+common-microservice:
+  extraManifests:
+    - apiVersion: batch/v1
+      kind: CronJob
+      metadata:
+        name: my-app-cleanup-job
+      spec:
+        schedule: "0 2 * * *"
+        jobTemplate:
+          spec:
+            template:
+              spec:
+                containers:
+                  - name: cleaner
+                    image: busybox
+                    args: ["echo", "cleaning up!"]
+                restartPolicy: OnFailure
 ```
 
 ---

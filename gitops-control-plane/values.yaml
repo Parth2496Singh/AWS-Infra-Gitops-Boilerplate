@@ -12,15 +12,13 @@ cluster:
 
 argocd:
   # The Argo CD Project name under which all microservices will be grouped.
-  projectName: "my-platform"
+  projectName: "<YOUR_PROJECT_NAME>"
   # Unifies the naming scheme across ApplicationSet and ImageUpdater.
   # Example: If appPrefix is "<YOUR_PROJECT_NAME>", your apps will be named "<YOUR_PROJECT_NAME>-backend".
-  appPrefix: "my"
+  appPrefix: "<YOUR_PROJECT_NAME>"
   # The GitHub repository URL where your platform code and Helm charts are stored.
   # Argo CD will continuously poll this repository for state changes.
-  repoUrl: "https://github.com/Parth2496Singh/AWS-Infra-Gitops-Boilerplate.git"
-  # The relative path inside the repo where the generic Helm blueprint is located.
-  blueprintPath: "charts/common-microservices"
+  repoUrl: "https://github.com/<YOUR_ORG>/<YOUR_REPO>.git"
   # The public-facing URL of your Argo CD dashboard. Used for email notification links.
   # If you don't know this URL, see "Step 7: Accessing the Argo CD UI" in the README.md!
   publicUrl: "https://argocd.yourdomain.com" 
