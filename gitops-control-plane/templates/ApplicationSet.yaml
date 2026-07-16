@@ -30,16 +30,11 @@ spec:
       # The first source pulls the generic common-microservices blueprint.
       # The second source injects the specific values.yaml from the discovered `apps/<name>` directory.
       # This enforces DRY (Don't Repeat Yourself) infrastructure across all microservices.
-      sources:
-        - repoURL: '{{ .Values.argocd.repoUrl }}'
-          path: '{{ .Values.argocd.blueprintPath }}'
-          targetRevision: main
-          helm:
-            valueFiles:
-              - '$values/{{ "{{path}}" }}/values.yaml'
-        - repoURL: '{{ .Values.argocd.repoUrl }}'
-          targetRevision: main
-          ref: values
+      source:
+        repoURL: '{{ .Values.argocd.repoUrl }}'
+        path: 'apps/{{ "{{path.basename}}" }}'
+        targetRevision: main
+
       destination:
         server: '{{ .Values.cluster.serverUrl }}'
         # FIX: Now uses the environment variable dynamically

@@ -1,21 +1,22 @@
-# apps/example-microservice/values.yaml
-# OVERRIDES for your example microservice.
-# These values automatically overwrite the defaults in 'charts/common-microservices/values.yaml'.
+common-microservice:
+  # apps/example-microservice/values.yaml
+  # OVERRIDES for your example microservice.
+  # These values automatically overwrite the defaults in 'charts/common-microservices/values.yaml'.
 
-# Number of pods to run for high availability.
-replicaCount: 2
+  # Number of pods to run for high availability.
+  replicaCount: 2
 
-image:
-  # The exact AWS ECR repository URL for the microservice image.
-  repository: <YOUR_AWS_ACCOUNT_ID>.dkr.ecr.<YOUR_AWS_REGION>.amazonaws.com/<YOUR_PROJECT_NAME>/example-microservice
-  # The specific Docker tag to deploy. (Argo CD Image Updater will bump this automatically).
-  tag: v1.0.0
+  image:
+    # The exact AWS ECR repository URL for the microservice image.
+    repository: <YOUR_AWS_ACCOUNT_ID>.dkr.ecr.<YOUR_AWS_REGION>.amazonaws.com/<YOUR_PROJECT_NAME>/example-microservice
+    # The specific Docker tag to deploy. (Argo CD Image Updater will bump this automatically).
+    tag: v1.0.0
 
-service:
-  # The internal port that your application container is listening on.
-  port: 8080
+  service:
+    # The internal port that your application container is listening on.
+    port: 8080
 
-ingress:
-  # Set to true if you want this microservice to be publicly accessible via the AWS Load Balancer.
-  # Set to false if it should only be accessed internally by other services via the Kubernetes Service.
-  enabled: false
+  ingress:
+    # Set to true if you want this microservice to be publicly accessible via the AWS Load Balancer.
+    # Set to false if it should only be accessed internally by other services via the Kubernetes Service.
+    enabled: false

@@ -36,7 +36,7 @@ Resources:
   GitHubActionsRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "GitHubActions-${GitHubRepo}-Role"
+      RoleName: "GitHubActions-Terraform-Role"
       AssumeRolePolicyDocument:
         Statement:
           - Effect: Allow

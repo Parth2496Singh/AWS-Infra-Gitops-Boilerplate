@@ -1,0 +1,9 @@
+apiVersion: v2
+name: example-microservice
+version: 1.0.0
+
+# This is the magic! It tells Helm to download your OCI blueprint from AWS ECR
+dependencies:
+  - name: common-microservice  # This MUST match the 'name:' inside the blueprint's Chart.yaml
+    version: 1.0.1             # This MUST match the 'version:' inside the blueprint's Chart.yaml
+    repository: oci://<YOUR_AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/universal-helm-chart

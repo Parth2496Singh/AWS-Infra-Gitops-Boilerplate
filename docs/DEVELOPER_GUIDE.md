@@ -8,16 +8,34 @@ Because this template is highly advanced, a single `values.yaml` file can comple
 
 ## 1. How to Add a New Microservice
 
-Adding a new application to the cluster is completely automated via GitOps (Argo CD). You do not need to write any Helm templates yourself!
+Adding a new application to the cluster is completely automated via GitOps. We use the **Umbrella Chart Pattern** to dynamically import your infrastructure blueprint from an AWS ECR OCI registry.
 
 1. **Create a new folder** inside the `apps/` directory with your application's name (e.g., `apps/payment-service/`).
-2. **Copy the default blueprint values:**
-   ```bash
-   cp charts/common-microservices/values.yaml apps/payment-service/values.yaml
+2. **Create a `Chart.yaml`** to import the universal blueprint:
+   ```yaml
+   apiVersion: v2
+   name: payment-service
+   version: 1.0.0
+   dependencies:
+     - name: common-microservice
+       version: 1.0.1  # The version of the universal blueprint in ECR
+       repository: oci://<YOUR_AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/universal-helm-chart
    ```
-3. **Edit your new `values.yaml`** to match your application's specific requirements (e.g., change the Docker image, port, environment variables).
-4. **Commit and push** to the `main` branch. 
-   *(Argo CD will automatically detect the new folder via its ApplicationSet and instantly deploy it using the universal blueprint).*
+3. **Create your `values.yaml`** to configure your app. (Note: everything must be indented under `common-microservice:`):
+   ```yaml
+   common-microservice:
+     replicaCount: 2
+     image:
+       repository: "..."
+       tag: "v1.0.0"
+   ```
+4. **Generate the Lockfile (CRITICAL):** Argo CD requires a lockfile to ensure deterministic GitOps state. Run this locally:
+   ```bash
+   aws ecr get-login-password --region us-east-1 | helm registry login --username AWS --password-stdin <YOUR_AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com
+   helm dependency update apps/payment-service/
+   ```
+5. **Commit and push** the `Chart.yaml`, `values.yaml`, and the generated `Chart.lock` to the `main` branch. 
+   *(Argo CD will automatically detect the new folder, download the OCI blueprint, and deploy it).*
 
 ---
 
@@ -108,5 +126,5 @@ If you are setting up this boilerplate for a new project, you **must** edit this
 ---
 
 ## 4. Best Practices for Developers
-*   **Never modify `charts/common-microservices`** unless the change applies globally to *every single microservice*.
-*   **Keep it DRY**: If you find yourself using `extraManifests` to deploy a `CronJob` across 15 different microservices, it is time to ask the Platform Engineering team to build a native `cronjob.yaml` template into the Universal Chart.
+*   **The Blueprint is External:** The universal blueprint lives in its own repository (`universal-helm-chart`). If you need a new global Kubernetes resource (like a `CronJob` template), you must contribute to that repository and bump the `version` tag.
+*   **Keep it DRY**: If you find yourself using `extraManifests` to deploy the exact same resource across 15 different microservices, it is time to ask the Platform Engineering team to build it natively into the `universal-helm-chart`.
