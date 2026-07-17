@@ -15,5 +15,11 @@ spec:
         method: "git"
       images:
         - alias: "{{ . }}"
-          imageName: "{{ $.Values.registry.ecrBaseUrl }}/{{ $.Values.registry.repositoryPrefix }}/{{ . }}"
+          imageName: "{{ $.Values.registry.ecrBaseUrl }}/{{ lower $.Values.registry.repositoryPrefix }}/{{ . }}"
+          commonUpdateSettings:
+            updateStrategy: "semver"
+            pullSecret: "pullsecret:argocd/ecr-registry-secret"
+          manifestTargets:
+            helm:
+              tag: "{{ $.Values.imageUpdater.helmImageTagPath | default "image.tag" }}"
     {{- end }}

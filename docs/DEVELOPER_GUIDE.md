@@ -2,11 +2,50 @@
 
 This guide explains how developers can leverage the **Universal DRY Helm Chart** to instantly deploy and scale their applications without writing raw Kubernetes YAML. The definitive reference template can be found in `apps/example-microservice/values.yaml`.
 
-Because this template is highly advanced, a single `values.yaml` file can completely transform the underlying Kubernetes architecture, allowing you to deploy Deployments, StatefulSets, DaemonSets, ConfigMaps, Secrets, and ServiceMonitors effortlessly.
+> [!TIP]
+> Because this template is highly advanced, a single `values.yaml` file can completely transform the underlying Kubernetes architecture, allowing you to deploy Deployments, StatefulSets, DaemonSets, ConfigMaps, Secrets, and ServiceMonitors effortlessly.
 
 ---
 
-## 1. How to Add a New Microservice
+## 🔐 1. Updating the Universal Blueprint & Authentication
+
+When the Platform Engineering team updates the master Universal Helm Chart (e.g., bumping it from `v1.0.4` to `v1.0.5`), all microservices must pull the new version to inherit the updates. Because the blueprint is stored securely in AWS ECR, your local machine must authenticate before generating the lock files.
+
+### Step 1: Authenticate Local Helm Client
+Run this command to fetch a 12-hour AWS token and log your local Helm client into the registry. You only need to do this once every 12 hours.
+```bash
+aws ecr get-login-password --region us-east-1 | helm registry login --username AWS --password-stdin <YOUR_AWS_ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com
+```
+
+### Step 2: Generate the Lock Files
+Whenever you change the `version: x.x.x` in your application's `Chart.yaml`, you must run the update command to physically download the blueprint and generate the `Chart.lock` file.
+```bash
+cd apps/<your-app-name>
+helm dependency update
+```
+> [!NOTE]
+> In large enterprise environments with 100+ microservices, you do not run this manually. You should utilize a bot like **Renovate** or **Dependabot**, which will automatically open Pull Requests, authenticate with ECR via CI/CD secrets, and run `helm dependency update` across all 100 repositories simultaneously.
+
+### Step 3: Upgrading the GitOps Control Plane (Platform Admins)
+If you make changes to the master `gitops-control-plane/values.yaml` (such as updating Image Updater rules or Argo CD settings), you must apply them via Helm. 
+
+> [!WARNING]
+> Because Kubernetes Server-Side Apply (SSA) restricts Helm from overwriting the ECR token injected dynamically by the CronJob, you must explicitly delete the secret before upgrading!
+
+```bash
+# 1. Delete the dynamic secret to prevent SSA conflicts
+kubectl delete secret ecr-registry-secret -n argocd
+
+# 2. Upgrade the control plane
+helm upgrade platform-control-plane ./gitops-control-plane -n argocd
+
+# 3. Manually trigger the CronJob to refill the token instantly
+kubectl create job --from=cronjob/ecr-token-refresh manual-refresh-$(date +%s) -n argocd
+```
+
+---
+
+## 🚀 2. How to Add a New Microservice
 
 Adding a new application to the cluster is completely automated via GitOps. We use the **Umbrella Chart Pattern** to dynamically import your infrastructure blueprint from an AWS ECR OCI registry.
 
@@ -39,10 +78,11 @@ Adding a new application to the cluster is completely automated via GitOps. We u
 
 ---
 
-## 2. Service Discovery (Cross-Pod Communication)
+## 🔗 3. Service Discovery (Cross-Pod Communication)
 When microservices talk to each other (e.g., an NGINX frontend proxying to a Django backend), you must use the exact Kubernetes Service name. 
 
-Because we use the `appPrefix` in Argo CD to group your applications, **your Service names will be prefixed with your Project Name.**
+> [!CAUTION]
+> Because we use the `appPrefix` in Argo CD to group your applications, **your Service names will be prefixed with your Project Name.**
 
 **Example Scenario:**
 *   Project Name: `lost-found`
@@ -60,11 +100,11 @@ proxy_pass http://lost-found-backend:8080;
 
 ---
 
-## 3. Configuring the Universal Template (`values.yaml`)
+## ⚙️ 4. Configuring the Universal Template (`values.yaml`)
 
 The Universal Helm Chart acts as a machine. Depending on what you toggle in your `values.yaml`, it will generate different Kubernetes resources. Below is a comprehensive guide to all advanced configurations.
 
-### 2.1 Changing the Workload Type
+### 4.1 Changing the Workload Type
 By default, your app is deployed as a Kubernetes `Deployment`. If your application requires stateful persistent storage or needs to run exactly one Pod on every Node, you can instantly change the core architecture:
 
 ```yaml
@@ -73,10 +113,10 @@ common-microservice:
   workloadType: "StatefulSet"
 ```
 
-### 2.2 Migrating Local `.env` Files to Kubernetes
+### 4.2 Migrating Local `.env` Files to Kubernetes
 In local development (Docker Compose), you rely on a `.env` file to pass environment variables to your application. In Kubernetes, you cannot mount a `.env` file directly. Instead, Kubernetes uses **ConfigMaps** (for non-sensitive data) and **Secrets** (for sensitive passwords/tokens).
 
-Our Universal Helm Chart makes this migration effortless. You simply copy-paste the values from your `.env` file directly into your `values.yaml` using the `envConfig` and `secrets` blocks. The chart will dynamically generate the Kubernetes objects and inject them into your Pod as standard environment variables (so your code can still read them natively via `process.env` or `os.environ`).
+Our Universal Helm Chart makes this migration effortless. You simply copy-paste the values from your `.env` file directly into your `values.yaml` using the `envConfig` and `secrets` blocks. The chart will dynamically generate the Kubernetes objects and inject them into your Pod as standard environment variables.
 
 #### Non-Sensitive Variables (ConfigMap)
 Do **not** write raw ConfigMap YAML. Define them here:
@@ -90,7 +130,8 @@ common-microservice:
 
 #### Sensitive Variables (Secrets)
 Similarly, you can dynamically generate and mount Kubernetes Secrets:
-*(Note: In a true production environment, consider using External Secrets Operator (ESO) instead of committing plaintext secrets to Git).*
+> [!WARNING]
+> In a true production environment, consider using External Secrets Operator (ESO) instead of committing plaintext secrets to Git!
 ```yaml
 common-microservice:
   secrets:
@@ -99,7 +140,7 @@ common-microservice:
     DJANGO_SECRET_KEY: "velzion-insecure-key"
 ```
 
-### 2.4 Enabling Prometheus Metrics (ServiceMonitor)
+### 4.3 Enabling Prometheus Metrics (ServiceMonitor)
 If your application exposes a `/metrics` endpoint, you can automatically generate a Prometheus `ServiceMonitor` to tell the Prometheus Operator to start scraping it. No `ServiceMonitor` YAML required!
 
 ```yaml
@@ -111,7 +152,7 @@ common-microservice:
     interval: "30s"     # How often Prometheus should scrape
 ```
 
-### 2.5 Injecting Sidecars (`extraContainers`)
+### 4.4 Injecting Sidecars (`extraContainers`)
 If your application requires a sidecar (like a Prometheus exporter, logging agent, or Cloud SQL Proxy), you can seamlessly inject raw container YAML into the same Pod without modifying the underlying blueprint:
 
 ```yaml
@@ -136,7 +177,7 @@ common-microservice:
     port: metrics    # Scrape the newly exposed metrics port!
 ```
 
-### 2.6 The Escape Hatch (Raw Kubernetes Manifests)
+### 4.5 The Escape Hatch (Raw Kubernetes Manifests)
 If your microservice requires a highly specific Kubernetes resource that the Universal Chart doesn't support (e.g., a `NetworkPolicy`, `CronJob`, or a custom `RoleBinding`), use the `extraManifests` escape hatch.
 
 The template will read this list and render it exactly as raw YAML:
@@ -163,7 +204,7 @@ common-microservice:
 
 ---
 
-## 3. Configuring the Global GitOps Engine (`gitops-control-plane`)
+## 🌍 5. Configuring the Global GitOps Engine (`gitops-control-plane`)
 
 While the `apps/` directory controls individual microservices, the **`gitops-control-plane/values.yaml`** file controls the master Argo CD deployment engine itself. 
 
@@ -176,6 +217,6 @@ If you are setting up this boilerplate for a new project, you **must** edit this
 
 ---
 
-## 4. Best Practices for Developers
+## 🏆 6. Best Practices for Developers
 *   **The Blueprint is External:** The universal blueprint lives in its own repository: **[universal-helm-chart](https://github.com/Parth2496Singh/universal-helm-chart)**. If you need a new global Kubernetes resource (like a `CronJob` template), you must contribute to that repository and bump the `version` tag.
 *   **Keep it DRY**: If you find yourself using `extraManifests` to deploy the exact same resource across 15 different microservices, it is time to ask the Platform Engineering team to build it natively into the `universal-helm-chart`.

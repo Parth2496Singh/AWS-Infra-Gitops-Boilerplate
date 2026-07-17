@@ -20,6 +20,7 @@ To make platform creation frictionless, we use `bootstrap-template.sh` to hydrat
 Even after running the script, you must manually complete these steps:
 - [ ] Delete all `.terraform/` directories and `.terraform.lock.hcl` files locally if you have previously run `terraform init`.
 - [ ] Generate fresh SSH keys (`terraform-eks-key`) in the AWS console.
+- [ ] Verify your ECR repository prefix in `gitops-control-plane/values.yaml`. The `repositoryPrefix` value MUST exactly match your Docker repository names in AWS ECR (e.g. `lost-found`), otherwise Argo CD Image Updater will silently ignore new image tags due to strict string matching.
 - [ ] Uncomment the `push` and `pull_request` triggers in `.github/workflows/terraform-cicd.yaml` to activate your pipeline.
 
 ---

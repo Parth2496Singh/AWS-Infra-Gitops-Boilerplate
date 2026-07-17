@@ -19,7 +19,7 @@ spec:
       # FIX: Now uses the unified prefix from values.yaml, and correctly escapes Argo CD's path.basename
       name: '{{ .Values.argocd.appPrefix }}-{{ "{{path.basename}}" }}'
       annotations:
-        # FIX: Dynamically injects the receiver email
+        # Email Notifications
         notifications.argoproj.io/subscribe.on-deployed.email: '{{ .Values.notifications.email.receiver }}'
         notifications.argoproj.io/subscribe.on-health-degraded.email: '{{ .Values.notifications.email.receiver }}'
     spec:
