@@ -36,7 +36,7 @@ cp ./terraform-ec2/terraform-ec2-key* ./terraform-ec2/remote-backend/
 > [!NOTE]
 > This generates modern `ed25519` key pairs without a passphrase. The `.gitignore` prevents these from being committed to source control.
 
-### 2.2 Bootstrap Terraform Remote State
+### 2.2 Bootstrap Terraform Remote State (EKS)
 **Purpose:** Terraform must store its state remotely (S3) and use state locking (DynamoDB) to prevent concurrent modifications by CI/CD pipelines.
 **Command:**
 ```bash
@@ -47,7 +47,18 @@ cd ../..
 ```
 **✅ Verification:** Log into the AWS Console. Verify the S3 bucket and DynamoDB table were created in `us-east-1`.
 
-### 2.3 Configure Keyless CI/CD Authentication (OIDC)
+### 2.3 Bootstrap Terraform Remote State (EC2)
+**Purpose:** Set up remote state for standalone EC2 deployments.
+**Command:**
+```bash
+cd terraform-ec2/remote-backend
+terraform init
+terraform apply -auto-approve
+cd ../..
+```
+**✅ Verification:** Log into the AWS Console. Verify the S3 bucket and DynamoDB table for EC2 were created.
+
+### 2.4 Configure Keyless CI/CD Authentication (OIDC)
 **Purpose:** Allows GitHub Actions to assume an AWS IAM role dynamically without storing static, long-lived AWS Access Keys.
 **Command:**
 ```bash
@@ -63,7 +74,7 @@ aws cloudformation deploy \
 > 2. Go to your GitHub Repository -> **Settings** -> **Secrets and variables** -> **Actions**.
 > 3. Under **Secrets**, click *New repository secret*, name it `AWS_ROLE_ARN`, and paste the ARN.
 
-### 2.4 Provision the EKS Cluster
+### 2.5 Provision the EKS Cluster
 **Purpose:** Deploys the VPC, Subnets, Internet Gateway, EKS Control Plane, and Managed Node Groups.
 **Command:**
 ```bash
@@ -73,6 +84,18 @@ terraform apply -auto-approve
 ```
 > [!TIP]
 > This process takes approximately 15 minutes. It provisions the physical compute resources and installs core addons like the AWS Load Balancer Controller.
+
+### 2.6 Provision the EC2 Instance (Alternative to EKS)
+**Purpose:** Deploys a standalone EC2 instance configured with Docker and your project code via user-data.
+**Pre-requisite:** Update `terraform-ec2/ec2-infra/User_data-ec2.sh` with your specific variables (e.g., `AWS_REGION`, `ECR_REGISTRY`, `<YOUR_PROJECT_NAME>`, `<YOUR_ORG>/<YOUR_REPO>`) before applying.
+**Command:**
+```bash
+cd terraform-ec2/
+terraform init
+terraform apply -auto-approve
+```
+> [!TIP]
+> The EC2 instance will automatically install Docker, AWS CLI, and attempt to pull your project via the user-data script upon boot.
 
 ---
 
@@ -163,6 +186,18 @@ kubectl create job --from=cronjob/ecr-token-refresh ecr-token-refresh-manual-$(d
 - User: `admin`
 - Pass: `prom-operator`
 
+### EC2 Access (If using EC2 instead of EKS)
+**Purpose:** Connect to your standalone EC2 instance for debugging or manual deployment.
+**Command:**
+```bash
+# Get the public IP of your EC2 instance from Terraform output
+cd terraform-ec2/
+terraform output
+
+# SSH into the instance using the generated key
+ssh -i terraform-ec2-key ubuntu@<EC2_PUBLIC_IP>
+```
+
 ---
 
 ## 💥 5. Teardown & Cleanup
@@ -196,5 +231,22 @@ Once you have verified the AWS resources are gone, you are safe to destroy the i
 
 ```bash
 cd terraform-eks/
+terraform destroy -auto-approve
+```
+
+---
+
+## 💥 6. Teardown & Cleanup (EC2)
+
+If you deployed the standalone EC2 infrastructure instead of EKS, you can safely destroy it using the following commands:
+
+```bash
+cd terraform-ec2/
+terraform destroy -auto-approve
+```
+> [!TIP]
+> Make sure to also destroy the remote backend resources if you are completely cleaning up the environment.
+```bash
+cd terraform-ec2/remote-backend
 terraform destroy -auto-approve
 ```
